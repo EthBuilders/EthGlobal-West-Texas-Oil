@@ -1,0 +1,20 @@
+{
+  "name": "EthGlobal-West-Texas-Oil",
+  "version": "1.0.0",
+  "description": "EthGlobal Market Make Hackathon - Solving crude oil theft by reconciling Bill of Lading between mid-stream suppliers and end-stream refiners from Midland, Texas to Houston, Texas.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KenMan79/EthGlobal-West-Texas-Oil.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil/issues"
+  },
+  "homepage": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil#readme"
+}
