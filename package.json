@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil/issues"
   },
-  "homepage": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil#readme"
+  "homepage": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil#readme",
+  "dependencies": {
+    "rimble-ui": "^0.14.0",
+    "styled-components": "^5.2.1"
+  }
 }
