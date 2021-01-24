@@ -1,0 +1,26 @@
+{
+  "name": "ethglobal-west-texas-oil",
+  "version": "1.0.0",
+  "description": "General information: Latest update: 1/21/2021  Version: 0.01 License: MIT",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "git+https://github.com/KenMan79/EthGlobal-West-Texas-Oil.git",
+  "author": "Kenneth Luster <51566205+KenMan79@users.noreply.github.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil/issues"
+  },
+  "homepage": "https://github.com/KenMan79/EthGlobal-West-Texas-Oil#readme",
+  "dependencies": {
+    "bootstrap": "^4.6.0",
+    "expo-cli": "^4.0.17",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "reactstrap": "^8.9.0"
+  }
+}
