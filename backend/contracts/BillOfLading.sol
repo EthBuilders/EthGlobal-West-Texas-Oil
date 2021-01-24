@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity ^0.7.5;
 
-contract BillOfLading {
-  constructor() public {
-  }
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract BillOfLading is Ownable {
+    constructor() public {}
 }
