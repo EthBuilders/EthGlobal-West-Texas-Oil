@@ -7,13 +7,15 @@ contract("BillOfLading", (accounts) => {
     instance = await BillOfLading.deployed({ from: accounts[0] });
   });
 
-  it("should be owned by the deployer", async () => {
-    let instance_owner = await instance.owner();
-    assert.equal(instance_owner, accounts[0]);
-  });
+  it("should set the deployer as the default admin", async () => {
+    let DEFAULT_ADMIN_ROLE = "0x00";
+    let deployer_is_instance_admin = await instance.hasRole(
+      DEFAULT_ADMIN_ROLE,
+      accounts[0]
+    );
+    let admin_count = await instance.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
 
-  it("should not be owned by another account", async () => {
-    let instance_owner = await instance.owner();
-    assert.notEqual(instance_owner, accounts[1]);
+    assert.isTrue(deployer_is_instance_admin);
+    assert.equal(admin_count, 1);
   });
 });
