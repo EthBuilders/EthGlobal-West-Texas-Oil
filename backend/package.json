@@ -14,5 +14,8 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^3.3.0"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.10"
   }
 }
