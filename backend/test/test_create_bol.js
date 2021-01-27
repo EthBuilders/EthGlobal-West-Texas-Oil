@@ -51,7 +51,23 @@ contract("BillOfLading", (accounts) => {
         "must have minter role to mint"
       );
     });
-    it("should mint a token and give to the minter");
-    it("should increase the total supply by 1");
+    it("should mint a token and give to the minter", async () => {
+      let balance_0 = await instance.balanceOf(accounts[0]);
+      let tx = await instance.createBillOfLading(
+        [shipper, sn, origin, destination, quantity],
+        { from: accounts[0] }
+      );
+      let balance_1 = await instance.balanceOf(accounts[0]);
+      assert.equal(balance_0.addn(1).words[0], balance_1.words[0]);
+    });
+    it("should increase the total supply by 1", async () => {
+      let totalsupply_0 = await instance.totalSupply();
+      let tx = await instance.createBillOfLading(
+        [shipper, sn, origin, destination, quantity],
+        { from: accounts[0] }
+      );
+      let totalsupply_1 = await instance.totalSupply();
+      assert.equal(totalsupply_0.addn(1).words[0], totalsupply_1.words[0]);
+    });
   });
 });
