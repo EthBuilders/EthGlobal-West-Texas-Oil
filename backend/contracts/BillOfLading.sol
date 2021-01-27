@@ -24,7 +24,7 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId {
         59.98 => 59980
         00.39 => 00390
      */
-    struct geoPosition {
+    struct GeoPosition {
         uint8 degree;
         uint8 minute;
         uint16 second;
@@ -42,10 +42,23 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId {
     struct MintArgs {
         address driver;
         string serialNumber;
-        geoPosition[2] origin;
-        geoPosition[2] destination;
+        GeoPosition[2] origin;
+        GeoPosition[2] destination;
         uint256 quantity;
     }
+
+    struct Bill {
+        address driver;
+        string serialNumber;
+        GeoPosition originLatitude;
+        GeoPosition originLongitude;
+        GeoPosition destinationLatitude;
+        GeoPosition destinationLongitude;
+        uint256 quantity;
+        uint256 timestamp;
+    }
+
+    Bill[] public bills;
 
     constructor(
         string memory name,
@@ -53,7 +66,27 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId {
         string memory baseURI
     ) public ERC721PresetMinterPauserAutoId(name, symbol, baseURI) {}
 
+    /// @notice Create a Bill of Lading for a shipment
+    /// @dev User facing function which creates a bill
     function createBillOfLading(MintArgs memory _args) public {
+        bills.push(
+            Bill({
+                driver: _args.driver,
+                serialNumber: _args.serialNumber,
+                originLatitude: _args.origin[0],
+                originLongitude: _args.origin[1],
+                destinationLatitude: _args.destination[0],
+                destinationLongitude: _args.destination[1],
+                quantity: _args.quantity,
+                timestamp: block.timestamp
+            })
+        );
         mint(msg.sender);
+        /**
+            TODO: A dbol should be minted at the same time, and funded with
+            assets, this requires the caller to before hand approve this
+            contract to take funds from an asset contract (stablecoin), and
+            then pass those funds along to the dbol.
+         */
     }
 }
