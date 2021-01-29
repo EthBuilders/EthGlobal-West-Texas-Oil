@@ -2,10 +2,12 @@
 
 pragma solidity ^0.7.5;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 /// @title ERC998ERC20 Bottom-Up Composable Fungible Token
 /// @dev See https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
 /// Note: The ERC-165 identifier for this interface is 0xffafa991
-interface ERC998ERC20BottomUp {
+interface IERC998ERC20BottomUp is IERC20 {
     /// @dev This emits when a token is transferred to an ERC721 token
     /// @param _toContract The contract the token is transferred to
     /// @param _toTokenId The token the token is transferred to

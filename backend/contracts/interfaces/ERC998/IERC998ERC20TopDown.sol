@@ -2,10 +2,12 @@
 
 pragma solidity ^0.7.5;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 /// @title ERC998ERC20 Top-Down Composable Non-Fungible Token
 /// @dev See https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
 ///  Note: the ERC-165 identifier for this interface is 0x7294ffed
-interface ERC998ERC20TopDown {
+interface IERC998ERC20TopDown is IERC721 {
     /// @dev This emits when a token receives ERC20 tokens.
     /// @param _from The prior owner of the token.
     /// @param _toTokenId The token that receives the ERC20 tokens.
