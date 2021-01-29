@@ -6,7 +6,7 @@
 
 pragma solidity ^0.7.5;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -43,7 +43,7 @@ interface ERC998ERC721TopDown {
         address _operator,
         address _from,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external returns (bytes4);
 
     function transferChild(
@@ -65,7 +65,7 @@ interface ERC998ERC721TopDown {
         address _to,
         address _childContract,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     function transferChildToParent(
@@ -74,7 +74,7 @@ interface ERC998ERC721TopDown {
         uint256 _toTokenId,
         address _childContract,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     // getChild function enables older contracts like cryptokitties to be transferred into a composable
@@ -127,7 +127,7 @@ interface ERC998ERC20TopDown {
     function tokenFallback(
         address _from,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     function balanceOfERC20(uint256 _tokenId, address __erc20Contract)
@@ -147,7 +147,7 @@ interface ERC998ERC20TopDown {
         address _to,
         address _erc223Contract,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     function getERC20(
@@ -184,7 +184,7 @@ interface ERC20AndERC223 {
     function transfer(
         address to,
         uint256 value,
-        bytes data
+        bytes calldata data
     ) external returns (bool success);
 
     function allowance(address _owner, address _spender)
@@ -199,7 +199,7 @@ interface ERC998ERC721BottomUp {
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 }
 
@@ -295,24 +295,24 @@ contract ComposableTopDown is
         }
 
         bool callSuccess;
-        bytes memory calldata;
+        bytes memory _calldata;
         // 0xed81cdda == rootOwnerOfChild(address,uint256)
-        calldata = abi.encodeWithSelector(
+        _calldata = abi.encodeWithSelector(
             0xed81cdda,
             address(this),
             _childTokenId
         );
         assembly {
             callSuccess := staticcall(
-                gas,
+                gas(),
                 rootOwnerAddress,
-                add(calldata, 0x20),
-                mload(calldata),
-                calldata,
+                add(_calldata, 0x20),
+                mload(_calldata),
+                _calldata,
                 0x20
             )
             if callSuccess {
-                rootOwner := mload(calldata)
+                rootOwner := mload(_calldata)
             }
         }
         if (callSuccess == true && rootOwner >> 224 == ERC998_MAGIC_VALUE) {
@@ -387,19 +387,19 @@ contract ComposableTopDown is
             bytes32 rootOwner;
             bool callSuccess;
             // 0xed81cdda == rootOwnerOfChild(address,uint256)
-            bytes memory calldata =
+            bytes memory _calldata =
                 abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     _from,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true) {
@@ -449,7 +449,7 @@ contract ComposableTopDown is
         _transferFrom(_from, _to, _tokenId);
         if (isContract(_to)) {
             bytes4 retval =
-                ERC721TokenReceiver(_to).onERC721Received(
+                IERC721Receiver(_to).onERC721Received(
                     msg.sender,
                     _from,
                     _tokenId,
@@ -463,12 +463,12 @@ contract ComposableTopDown is
         address _from,
         address _to,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         _transferFrom(_from, _to, _tokenId);
         if (isContract(_to)) {
             bytes4 retval =
-                ERC721TokenReceiver(_to).onERC721Received(
+                IERC721Receiver(_to).onERC721Received(
                     msg.sender,
                     _from,
                     _tokenId,
@@ -565,7 +565,7 @@ contract ComposableTopDown is
         address _to,
         address _childContract,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
         require(
@@ -616,16 +616,16 @@ contract ComposableTopDown is
         // before transferring.
         //does not work with current standard which does not allow approving self, so we must let it fail in that case.
         //0x095ea7b3 == "approve(address,uint256)"
-        bytes memory calldata =
+        bytes memory _calldata =
             abi.encodeWithSelector(0x095ea7b3, this, _childTokenId);
         assembly {
             let success := call(
-                gas,
+                gas(),
                 _childContract,
                 0,
-                add(calldata, 0x20),
-                mload(calldata),
-                calldata,
+                add(_calldata, 0x20),
+                mload(_calldata),
+                _calldata,
                 0
             )
         }
@@ -639,7 +639,7 @@ contract ComposableTopDown is
         uint256 _toTokenId,
         address _childContract,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         uint256 tokenId = childTokenOwner[_childContract][_childTokenId];
         require(
@@ -690,7 +690,7 @@ contract ComposableTopDown is
     function onERC721Received(
         address _from,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external returns (bytes4) {
         require(
             _data.length > 0,
@@ -716,7 +716,7 @@ contract ComposableTopDown is
         address _operator,
         address _from,
         uint256 _childTokenId,
-        bytes _data
+        bytes calldata _data
     ) external returns (bytes4) {
         require(
             _data.length > 0,
@@ -928,7 +928,7 @@ contract ComposableTopDown is
         address _to,
         address _erc223Contract,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external {
         require(_to != address(0));
         address rootOwner = address(rootOwnerOf(_tokenId));
@@ -957,20 +957,20 @@ contract ComposableTopDown is
         if (!allowed) {
             uint256 remaining;
             // 0xdd62ed3e == allowance(address,address)
-            bytes memory calldata =
+            bytes memory _calldata =
                 abi.encodeWithSelector(0xdd62ed3e, _from, msg.sender);
             bool callSuccess;
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     _erc20Contract,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    remaining := mload(calldata)
+                    remaining := mload(_calldata)
                 }
             }
             require(callSuccess, "call to allowance failed");
@@ -1014,7 +1014,7 @@ contract ComposableTopDown is
     function tokenFallback(
         address _from,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external {
         require(
             _data.length > 0,

@@ -4,7 +4,7 @@
 
 pragma solidity ^0.7.5;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -23,7 +23,7 @@ interface ERC998ERC721BottomUp {
     function rootOwnerOf(uint256 _tokenId)
         external
         view
-        returns (bytes rootOwner);
+        returns (bytes memory rootOwner);
 
     /**
      * The tokenOwnerOf function gets the owner of the _tokenId which can be a user address or another ERC721 token.
@@ -47,7 +47,7 @@ interface ERC998ERC721BottomUp {
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     // Transfers _tokenId from a parent ERC721 token to a user address.
@@ -56,7 +56,7 @@ interface ERC998ERC721BottomUp {
         uint256 _fromTokenId,
         address _to,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     // Transfers _tokenId from a parent ERC721 token to a parent ERC721 token.
@@ -66,7 +66,7 @@ interface ERC998ERC721BottomUp {
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 }
 
@@ -209,7 +209,7 @@ contract ComposableBottomUp is
         uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
         bool isParent = parentTokenId > 0;
         parentTokenId--;
-        bytes memory calldata;
+        bytes memory _calldata;
         bool callSuccess;
 
         if ((rootOwnerAddress == address(this))) {
@@ -232,22 +232,22 @@ contract ComposableBottomUp is
         if (isParent == false) {
             // success if this token is owned by a top-down token
             // 0xed81cdda == rootOwnerOfChild(address, uint256)
-            calldata = abi.encodeWithSelector(
+            _calldata = abi.encodeWithSelector(
                 0xed81cdda,
                 address(this),
                 _tokenId
             );
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     rootOwnerAddress,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true && rootOwner >> 224 == ERC998_MAGIC_VALUE) {
@@ -261,18 +261,18 @@ contract ComposableBottomUp is
             }
         } else {
             // 0x43a61a8e == rootOwnerOf(uint256)
-            calldata = abi.encodeWithSelector(0x43a61a8e, parentTokenId);
+            _calldata = abi.encodeWithSelector(0x43a61a8e, parentTokenId);
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     rootOwnerAddress,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true && rootOwner >> 224 == ERC998_MAGIC_VALUE) {
@@ -284,39 +284,39 @@ contract ComposableBottomUp is
                 // token owner is ERC721
                 address childContract = rootOwnerAddress;
                 //0x6352211e == "ownerOf(uint256)"
-                calldata = abi.encodeWithSelector(0x6352211e, parentTokenId);
+                _calldata = abi.encodeWithSelector(0x6352211e, parentTokenId);
                 assembly {
                     callSuccess := staticcall(
-                        gas,
+                        gas(),
                         rootOwnerAddress,
-                        add(calldata, 0x20),
-                        mload(calldata),
-                        calldata,
+                        add(_calldata, 0x20),
+                        mload(_calldata),
+                        _calldata,
                         0x20
                     )
                     if callSuccess {
-                        rootOwnerAddress := mload(calldata)
+                        rootOwnerAddress := mload(_calldata)
                     }
                 }
                 require(callSuccess, "Call to ownerOf failed");
 
                 // 0xed81cdda == rootOwnerOfChild(address,uint256)
-                calldata = abi.encodeWithSelector(
+                _calldata = abi.encodeWithSelector(
                     0xed81cdda,
                     childContract,
                     parentTokenId
                 );
                 assembly {
                     callSuccess := staticcall(
-                        gas,
+                        gas(),
                         rootOwnerAddress,
-                        add(calldata, 0x20),
-                        mload(calldata),
-                        calldata,
+                        add(_calldata, 0x20),
+                        mload(_calldata),
+                        _calldata,
                         0x20
                     )
                     if callSuccess {
-                        rootOwner := mload(calldata)
+                        rootOwner := mload(_calldata)
                     }
                 }
                 if (
@@ -432,7 +432,7 @@ contract ComposableBottomUp is
         uint256 _fromTokenId,
         address _to,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
         require(_to != address(0));
@@ -456,7 +456,7 @@ contract ComposableBottomUp is
 
         if (isContract(_to)) {
             bytes4 retval =
-                ERC721TokenReceiver(_to).onERC721Received(
+                IERC721Receiver(_to).onERC721Received(
                     msg.sender,
                     _fromContract,
                     _tokenId,
@@ -474,7 +474,7 @@ contract ComposableBottomUp is
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         require(_from != address(0));
         require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from);
@@ -489,19 +489,19 @@ contract ComposableBottomUp is
             bytes32 rootOwner;
             bool callSuccess;
             // 0xed81cdda == rootOwnerOfChild(address,uint256)
-            bytes memory calldata =
+            bytes memory _calldata =
                 abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     _from,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true) {
@@ -550,7 +550,7 @@ contract ComposableBottomUp is
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
         require(_toContract != address(0));
@@ -616,19 +616,19 @@ contract ComposableBottomUp is
             bytes32 rootOwner;
             bool callSuccess;
             // 0xed81cdda == rootOwnerOfChild(address,uint256)
-            bytes memory calldata =
+            bytes memory _calldata =
                 abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
             assembly {
                 callSuccess := staticcall(
-                    gas,
+                    gas(),
                     _from,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(_calldata, 0x20),
+                    mload(_calldata),
+                    _calldata,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true) {
@@ -675,7 +675,7 @@ contract ComposableBottomUp is
         _transferFrom(_from, _to, _tokenId);
         if (isContract(_to)) {
             bytes4 retval =
-                ERC721TokenReceiver(_to).onERC721Received(
+                IERC721Receiver(_to).onERC721Received(
                     msg.sender,
                     _from,
                     _tokenId,
@@ -689,12 +689,12 @@ contract ComposableBottomUp is
         address _from,
         address _to,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external {
         _transferFrom(_from, _to, _tokenId);
         if (isContract(_to)) {
             bytes4 retval =
-                ERC721TokenReceiver(_to).onERC721Received(
+                IERC721Receiver(_to).onERC721Received(
                     msg.sender,
                     _from,
                     _tokenId,
