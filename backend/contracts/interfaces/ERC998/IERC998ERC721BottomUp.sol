@@ -2,10 +2,12 @@
 
 pragma solidity ^0.7.5;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 /// @title ERC998ERC721 Bottom-Up Composable Non-Fungible Token
 /// @dev See https://github.com/ethereum/EIPs/blob/master/EIPS/eip-998.md
 ///  Note: the ERC-165 identifier for this interface is 0xa1b23002
-interface ERC998ERC721BottomUp {
+interface IERC998ERC721BottomUp is IERC721 {
     /// @dev This emits when a token is transferred to an ERC721 token
     /// @param _toContract The contract the token is transferred to
     /// @param _toTokenId The token the token is transferred to
