@@ -53,14 +53,15 @@ interface IERC998ERC721BottomUp is IERC721 {
     /// @notice Transfer token from owner address to a token
     /// @param _from The owner address
     /// @param _toContract The ERC721 contract of the receiving token
-    /// @param _toToken The receiving token
+    /// @param _toTokenId The receiving token
+    /// @param _tokenId The token to transfer
     /// @param _data Additional data with no specified format
     function transferToParent(
         address _from,
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     /// @notice Transfer token from a token to an address
@@ -74,14 +75,14 @@ interface IERC998ERC721BottomUp is IERC721 {
         uint256 _fromTokenId,
         address _to,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     /// @notice Transfer a token from a token to another token
     /// @param _fromContract The address of the owning contract
     /// @param _fromTokenId The owning token
     /// @param _toContract The ERC721 contract of the receiving token
-    /// @param _toToken The receiving token
+    /// @param _toTokenId The receiving token
     /// @param _tokenId The token that is transferred
     /// @param _data Additional data with no specified format
     function transferAsChild(
@@ -90,7 +91,7 @@ interface IERC998ERC721BottomUp is IERC721 {
         address _toContract,
         uint256 _toTokenId,
         uint256 _tokenId,
-        bytes _data
+        bytes calldata _data
     ) external;
 }
 

@@ -19,7 +19,7 @@ interface ERC998ERC20TopDown {
     );
 
     /// @dev This emits when a token transfers ERC20 tokens.
-    /// @param _tokenId The token that owned the ERC20 tokens.
+    /// @param _fromTokenId The token that owned the ERC20 tokens.
     /// @param _to The address that receives the ERC20 tokens.
     /// @param _erc20Contract The ERC20 contract.
     /// @param _value The number of ERC20 tokens transferred.
@@ -37,7 +37,7 @@ interface ERC998ERC20TopDown {
     function tokenFallback(
         address _from,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     /// @notice Look up the balance of ERC20 tokens for a specific token and ERC20 contract
@@ -51,7 +51,7 @@ interface ERC998ERC20TopDown {
 
     /// @notice Transfer ERC20 tokens to address
     /// @param _tokenId The token to transfer from
-    /// @param _value The address to send the ERC20 tokens to
+    /// @param _to The address to send the ERC20 tokens to
     /// @param _erc20Contract The ERC20 contract
     /// @param _value The number of ERC20 tokens to transfer
     function transferERC20(
@@ -63,7 +63,7 @@ interface ERC998ERC20TopDown {
 
     /// @notice Transfer ERC20 tokens to address or ERC20 top-down composable
     /// @param _tokenId The token to transfer from
-    /// @param _value The address to send the ERC20 tokens to
+    /// @param _to The address to send the ERC20 tokens to
     /// @param _erc223Contract The ERC223 token contract
     /// @param _value The number of ERC20 tokens to transfer
     /// @param _data Additional data with no specified format, can be used to specify tokenId to transfer to
@@ -72,7 +72,7 @@ interface ERC998ERC20TopDown {
         address _to,
         address _erc223Contract,
         uint256 _value,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     /// @notice Get ERC20 tokens from ERC20 contract.

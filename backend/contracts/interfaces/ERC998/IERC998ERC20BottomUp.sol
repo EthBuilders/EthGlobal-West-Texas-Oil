@@ -38,7 +38,7 @@ interface ERC998ERC20BottomUp {
     /// @notice Transfer tokens from owner address to a token
     /// @param _from The owner address
     /// @param _toContract The ERC721 contract of the receiving token
-    /// @param _toToken The receiving token
+    /// @param _toTokenId The receiving token
     /// @param _amount The amount of tokens to transfer
     function transferToParent(
         address _from,
@@ -70,14 +70,14 @@ interface ERC998ERC20BottomUp {
         uint256 _fromTokenId,
         address _to,
         uint256 _amount,
-        bytes _data
+        bytes calldata _data
     ) external;
 
     /// @notice Transfer a token from a token to another token
     /// @param _fromContract The address of the owning contract
     /// @param _fromTokenId The owning token
     /// @param _toContract The ERC721 contract of the receiving token
-    /// @param _toToken The receiving token
+    /// @param _toTokenId The receiving token
     /// @param _amount The amount tokens to transfer
     function transferAsChild(
         address _fromContract,
