@@ -4,9 +4,9 @@
 
 pragma solidity ^0.7.5;
 
-import "./ERC721.sol";
-import "./ERC721Receiver.sol";
-import "./SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 interface ERC998ERC721BottomUp {
     event TransferToParent(
