@@ -3,12 +3,13 @@ pragma solidity ^0.7.5;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
+import "./interfaces/IERC1948.sol";
 
 // @title Bill of Lading NFT Contract
 // @author Edward Amor
 // @notice Users should not directly interact with this contract
 // @dev All ERC721 functions are inherited from Openzeppelin ERC721 contract
-contract BillOfLading is ERC721PresetMinterPauserAutoId {
+contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
     enum CardinalDirections {NORTH, EAST, SOUTH, WEST} // clock-wise ordering
 
     /**
@@ -59,12 +60,23 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId {
     }
 
     Bill[] public bills;
+    mapping(uint256 => bytes32) data;
+
+    /*
+     *     bytes4(keccak256('readData()')) == 0x70a08231
+     *     bytes4(keccak256('ownerOf(uint256)')) == 0x6352211e
+     *
+     *     => 0x37ebbc03 ^ 0xa983d43f == 0x9e68683c
+     */
+    bytes4 private constant _INTERFACE_ID_ERC1948 = 0x9e68683c;
 
     constructor(
         string memory name,
         string memory symbol,
         string memory baseURI
-    ) public ERC721PresetMinterPauserAutoId(name, symbol, baseURI) {}
+    ) public ERC721PresetMinterPauserAutoId(name, symbol, baseURI) {
+        _registerInterface(_INTERFACE_ID_ERC1948);
+    }
 
     /// @notice Create a Bill of Lading for a shipment
     /// @dev User facing function which creates a bill
@@ -88,5 +100,35 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId {
             contract to take funds from an asset contract (stablecoin), and
             then pass those funds along to the dbol.
          */
+    }
+
+    /**
+     * @dev See `IERC1948.readData`.
+     *
+     * Requirements:
+     *
+     * - `tokenId` needs to exist.
+     */
+    function readData(uint256 tokenId)
+        external
+        view
+        override
+        returns (bytes32)
+    {
+        require(_exists(tokenId));
+        return data[tokenId];
+    }
+
+    /**
+     * @dev See `IERC1948.writeData`.
+     *
+     * Requirements:
+     *
+     * - `msg.sender` needs to be owner of `tokenId`.
+     */
+    function writeData(uint256 tokenId, bytes32 newData) external override {
+        require(msg.sender == ownerOf(tokenId));
+        emit DataUpdated(tokenId, data[tokenId], newData);
+        data[tokenId] = newData;
     }
 }
