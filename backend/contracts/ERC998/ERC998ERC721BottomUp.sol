@@ -20,7 +20,7 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp {
 
     // return this.rootOwnerOf.selector ^ this.rootOwnerOfChild.selector ^
     //   this.tokenOwnerOf.selector ^ this.ownerOfChild.selector;
-    bytes32 constant ERC998_MAGIC_VALUE = bytes32(bytes4(0xcd740db5));
+    bytes32 constant ERC998_MAGIC_VALUE = bytes32(bytes4(0xcd740db5)) << 224;
 
     bytes4 private constant _INTERFACE_ID_ERC998ERC721TOPDOWN = 0x1efdf36a;
     bytes4 private constant _INTERFACE_ID_ERC998ERC721BOTTOMUP = 0xa1b23002;
@@ -281,7 +281,7 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp {
         address _tokenOwner;
         (_tokenOwner, parentTokenId, isParent) = _tokenOwnerOf(_tokenId);
         return (
-            (ERC998_MAGIC_VALUE << 224) | bytes32(uint256(_tokenOwner)),
+            (ERC998_MAGIC_VALUE | addressToBytes32(_tokenOwner)),
             parentTokenId,
             isParent
         );
