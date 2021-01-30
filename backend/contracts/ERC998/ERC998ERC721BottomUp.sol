@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
 import "../interfaces/ERC998/IERC998ERC721TopDown.sol";
 
-contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
+contract ERC998ERC721BottomUp is IERC998ERC721BottomUp {
     using SafeMath for uint256;
 
     struct TokenOwner {
@@ -285,5 +285,86 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
             parentTokenId,
             isParent
         );
+    }
+
+    /// @notice Transfer token from owner address to a token
+    /// @param _from The owner address
+    /// @param _toContract The ERC721 contract of the receiving token
+    /// @param _toTokenId The receiving token
+    /// @param _tokenId The token to transfer
+    /// @param _data Additional data with no specified format
+    function transferToParent(
+        address _from,
+        address _toContract,
+        uint256 _toTokenId,
+        uint256 _tokenId,
+        bytes calldata _data
+    ) external override {
+        require(_from != address(0));
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from);
+        require(_toContract != address(0));
+        require(
+            tokenIdToTokenOwner[_tokenId].parentTokenId == 0,
+            "Cannot transfer from address when owned by a token."
+        );
+        address approvedAddress =
+            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
+        if (msg.sender != _from) {
+            bytes32 rootOwner;
+            bool callSuccess;
+            // 0xed81cdda == rootOwnerOfChild(address,uint256)
+            bytes memory calldata =
+                abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
+            assembly {
+                callSuccess := staticcall(
+                    gas,
+                    _from,
+                    add(calldata, 0x20),
+                    mload(calldata),
+                    calldata,
+                    0x20
+                )
+                if callSuccess {
+                    rootOwner := mload(calldata)
+                }
+            }
+            if (callSuccess == true) {
+                require(
+                    rootOwner >> 224 != ERC998_MAGIC_VALUE,
+                    "Token is child of other top down composable"
+                );
+            }
+            require(
+                tokenOwnerToOperators[_from][msg.sender] ||
+                    approvedAddress == msg.sender
+            );
+        }
+
+        // clear approval
+        if (approvedAddress != address(0)) {
+            delete rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
+            emit Approval(_from, address(0), _tokenId);
+        }
+
+        // remove and transfer token
+        if (_from != _toContract) {
+            assert(tokenOwnerToTokenCount[_from] > 0);
+            tokenOwnerToTokenCount[_from]--;
+            tokenOwnerToTokenCount[_toContract]++;
+        }
+        TokenOwner memory parentToken =
+            TokenOwner(_toContract, _toTokenId.add(1));
+        tokenIdToTokenOwner[_tokenId] = parentToken;
+        uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length;
+        parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
+        tokenIdToChildTokenIdsIndex[_tokenId] = index;
+
+        require(
+            ERC721(_toContract).ownerOf(_toTokenId) != address(0),
+            "_toTokenId does not exist"
+        );
+
+        emit Transfer(_from, _toContract, _tokenId);
+        emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
 }
