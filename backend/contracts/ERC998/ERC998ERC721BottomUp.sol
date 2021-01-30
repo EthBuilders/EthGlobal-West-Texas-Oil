@@ -10,7 +10,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
 import "../interfaces/ERC998/IERC998ERC721TopDown.sol";
 
-contract ERC998ERC721BottomUp is IERC998ERC721BottomUp {
+contract ERC998ERC721BottomUp is
+    ERC721,
+    IERC998ERC721BottomUp,
+    IERC998ERC721BottomUpEnumerable
+{
     using SafeMath for uint256;
 
     struct TokenOwner {
