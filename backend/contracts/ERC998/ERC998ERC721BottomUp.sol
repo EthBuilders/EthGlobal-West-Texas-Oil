@@ -29,6 +29,36 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
     // tokenId => token owner
     mapping(uint256 => TokenOwner) tokenIdToTokenOwner;
 
+    function addressToBytes32(address _addr)
+        internal
+        pure
+        returns (bytes32 addr)
+    {
+        addr = bytes32(uint256(_addr)); // this is left padded
+        return addr;
+    }
+
+    function getSupportedInterfaces(
+        address account,
+        bytes4[] memory interfaceIds
+    ) internal view returns (bool[] memory) {
+        // an array of booleans corresponding to interfaceIds and whether they're supported or not
+        bool[] memory interfaceIdsSupported = new bool[](interfaceIds.length);
+
+        // query support of ERC165 itself
+        if (ERC165Checker.supportsERC165(account)) {
+            // query support of each interface in interfaceIds
+            for (uint256 i = 0; i < interfaceIds.length; i++) {
+                interfaceIdsSupported[i] = ERC165Checker.supportsInterface(
+                    account,
+                    interfaceIds[i]
+                );
+            }
+        }
+
+        return interfaceIdsSupported;
+    }
+
     // Use Cases handled:
     // Case 1: Token owner is this contract and no parent tokenId.
     // Case 2: Token owner is this contract and token
