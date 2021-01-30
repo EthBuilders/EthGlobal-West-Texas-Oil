@@ -3,9 +3,11 @@
 pragma solidity ^0.7.5;
 
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
+import "../interfaces/ERC998/IERC998ERC721TopDown.sol";
 
 contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
     using SafeMath for uint256;
@@ -40,12 +42,10 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
         view
         returns (bytes32 rootOwner)
     {
-        address rootOwnerAddress = tokenIdToTokenOwner[_tokenId].tokenOwner;
-        require(rootOwnerAddress != address(0));
-        uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
-        bool isParent = parentTokenId > 0;
-        parentTokenId--;
-        bytes memory calldata;
+        (address rootOwnerAddress, uint256 parentTokenId, bool isParent) =
+            _tokenOwnerOf(_tokenId);
+
+        bytes memory calldata_;
         bool callSuccess;
 
         if ((rootOwnerAddress == address(this))) {
@@ -68,7 +68,7 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
         if (isParent == false) {
             // success if this token is owned by a top-down token
             // 0xed81cdda == rootOwnerOfChild(address, uint256)
-            calldata = abi.encodeWithSelector(
+            calldata_ = abi.encodeWithSelector(
                 0xed81cdda,
                 address(this),
                 _tokenId
@@ -77,13 +77,13 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
                 callSuccess := staticcall(
                     gas,
                     rootOwnerAddress,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(calldata_, 0x20),
+                    mload(calldata_),
+                    calldata_,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(calldata_)
                 }
             }
             if (callSuccess == true && rootOwner >> 224 == ERC998_MAGIC_VALUE) {
@@ -97,18 +97,18 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
             }
         } else {
             // 0x43a61a8e == rootOwnerOf(uint256)
-            calldata = abi.encodeWithSelector(0x43a61a8e, parentTokenId);
+            calldata_ = abi.encodeWithSelector(0x43a61a8e, parentTokenId);
             assembly {
                 callSuccess := staticcall(
                     gas,
                     rootOwnerAddress,
-                    add(calldata, 0x20),
-                    mload(calldata),
-                    calldata,
+                    add(calldata_, 0x20),
+                    mload(calldata_),
+                    calldata_,
                     0x20
                 )
                 if callSuccess {
-                    rootOwner := mload(calldata)
+                    rootOwner := mload(calldata_)
                 }
             }
             if (callSuccess == true && rootOwner >> 224 == ERC998_MAGIC_VALUE) {
@@ -120,24 +120,24 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
                 // token owner is ERC721
                 address childContract = rootOwnerAddress;
                 //0x6352211e == "ownerOf(uint256)"
-                calldata = abi.encodeWithSelector(0x6352211e, parentTokenId);
+                calldata_ = abi.encodeWithSelector(0x6352211e, parentTokenId);
                 assembly {
                     callSuccess := staticcall(
                         gas,
                         rootOwnerAddress,
-                        add(calldata, 0x20),
-                        mload(calldata),
-                        calldata,
+                        add(calldata_, 0x20),
+                        mload(calldata_),
+                        calldata_,
                         0x20
                     )
                     if callSuccess {
-                        rootOwnerAddress := mload(calldata)
+                        rootOwnerAddress := mload(calldata_)
                     }
                 }
                 require(callSuccess, "Call to ownerOf failed");
 
                 // 0xed81cdda == rootOwnerOfChild(address,uint256)
-                calldata = abi.encodeWithSelector(
+                calldata_ = abi.encodeWithSelector(
                     0xed81cdda,
                     childContract,
                     parentTokenId
@@ -146,13 +146,13 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
                     callSuccess := staticcall(
                         gas,
                         rootOwnerAddress,
-                        add(calldata, 0x20),
-                        mload(calldata),
-                        calldata,
+                        add(calldata_, 0x20),
+                        mload(calldata_),
+                        calldata_,
                         0x20
                     )
                     if callSuccess {
-                        rootOwner := mload(calldata)
+                        rootOwner := mload(calldata_)
                     }
                 }
                 if (
