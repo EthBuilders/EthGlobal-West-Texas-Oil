@@ -78,115 +78,166 @@ contract ERC998ERC721BottomUp is IERC998ERC721BottomUp, ERC721 {
         override
         returns (bytes32 rootOwner)
     {
+        bool _isERC998ERC721TopDown;
+        bool _isERC998ERC721BottomUp;
+        bool _isERC721;
+        IERC998ERC721TopDown _topDownContract;
+        IERC998ERC721BottomUp _bottomUpContract;
+        IERC721 _ERC721Contract;
+        // Get token ownership information
+        // isParent: True if parentTokenId is a valid parent tokenId and false if there is no parent tokenId
+        // if isParent is false, no parent token, just owned by the tokenOwner
         (address tokenOwner, uint256 parentTokenId, bool isParent) =
             _tokenOwnerOf(_tokenId);
 
-        if ((tokenOwner == address(this))) {
-            do {
-                if (isParent == false) {
-                    // Case 1: Token owner is this contract and no token.
-                    // This case should not happen.
-                    return
-                        (ERC998_MAGIC_VALUE << 224) |
-                        bytes32(uint256(tokenOwner));
+        // check whether owned by a contract
+        if (Address.isContract(tokenOwner)) {
+            // true owned by a contract
+            // which contract is it owned by
+            // this contract or an external contract
+            if (tokenOwner == address(this)) {
+                // _tokenId is owned by this contract
+                // is it owned by another token
+                if (isParent) {
+                    // yes owned by another token in this contract
+                    // we have to check if that token is owned by anyone
+                    do {
+                        // traverse up by overwritting the tokenOwner, parentTokenId, isParent
+                        // this way we can see who owns the _tokenID's parent token ...
+                        (tokenOwner, parentTokenId, isParent) = _tokenOwnerOf(
+                            parentTokenId
+                        );
+                        // if the tokenOwner is still this contract repeat until
+                        // we've found that the tokenOwner is an external contract or User
+                    } while (tokenOwner == address(this));
+                    // we need to change the _tokenId we are looking at to be the parentTokenId
+                    // because we should now inspect if the parent has a parent or if it's the root
+                    _tokenId = parentTokenId;
                 } else {
-                    // Case 2: Token owner is this contract and token
-                    (tokenOwner, parentTokenId, isParent) = _tokenOwnerOf(
-                        parentTokenId
-                    );
+                    // no it isn't owned by another token in this contract
+                    // just the contract itself
+                    // essentially a dead token?
+                    return (ERC998_MAGIC_VALUE | addressToBytes32(tokenOwner));
                 }
-            } while (tokenOwner == address(this));
-            _tokenId = parentTokenId;
-        }
+            }
 
-        if (isParent == false) {
-            // success if this token is owned by a top-down token
-            // 0xed81cdda == rootOwnerOfChild(address, uint256)
-            if (Address.isContract(tokenOwner)) {
-                // Top Down Contract
-                bool _isERC998ERC721TopDown =
-                    ERC165Checker.supportsInterface(
+            // we should do check this next since we know the tokenOwner isn't this contract
+            // and just in case we did loop through our own contract
+            // check whether the parentTokenId is valid, or the token is owned by a Contract/EOA
+            if (isParent == false) {
+                // there is no parent token only a parent contract/ EOA
+                // we have to check both branches
+                // check if it is a contract
+                if (Address.isContract(tokenOwner)) {
+                    // yes it is a contract but there is no parent token
+                    // owned by just the contract
+                    // since no parentToken, is this contract a TopDown composable
+                    // which receives, transfers, and manages ERC721 tokens/bottom up composables
+                    _isERC998ERC721TopDown = ERC165Checker.supportsInterface(
                         tokenOwner,
                         _INTERFACE_ID_ERC998ERC721TOPDOWN
                     );
-                // Case 3: Token owner is top-down composable
-                if (_isERC998ERC721TopDown) {
-                    IERC998ERC721TopDown _contract =
-                        IERC998ERC721TopDown(tokenOwner);
-                    return _contract.rootOwnerOfChild(address(this), _tokenId);
+                    // if it is a TopDown contract we can query it for information
+                    if (_isERC998ERC721TopDown) {
+                        // true it is a top down contract
+                        // we can further query who the root owner is
+                        // by calling the rootOwnerOfChild function on the contract
+                        _topDownContract = IERC998ERC721TopDown(tokenOwner);
+                        return
+                            _topDownContract.rootOwnerOfChild(
+                                address(this),
+                                _tokenId
+                            );
+                    } else {
+                        // this is not a Top Down composable contract
+                        return (ERC998_MAGIC_VALUE |
+                            addressToBytes32(tokenOwner));
+                    }
                 } else {
-                    // Case 4: Token owner is an unknown contract
-                    return
-                        (ERC998_MAGIC_VALUE << 224) |
-                        bytes32(uint256(tokenOwner));
+                    // It is owned by a EOA account
+                    return (ERC998_MAGIC_VALUE | addressToBytes32(tokenOwner));
                 }
             } else {
-                // Case 5: Token owner is a user
-                return
-                    (ERC998_MAGIC_VALUE << 224) | bytes32(uint256(tokenOwner));
-            }
-        } else {
-            // 0x43a61a8e == rootOwnerOf(uint256)
-            if (Address.isContract(tokenOwner)) {
-                bool _isERC998ERC721TopDown =
-                    ERC165Checker.supportsInterface(
+                // _tokenId does have a parent token and it's in tokenOwner
+                // meaning either it is a topdown/bottomup/ or regular ERC721
+                // we have to check who the parent token is owned by
+                // get the supported interfaces at once in a batch
+                bool[] memory _supportedInterfaces =
+                    getSupportedInterfaces(
                         tokenOwner,
-                        _INTERFACE_ID_ERC998ERC721TOPDOWN
+                        [
+                            _INTERFACE_ID_ERC998ERC721TOPDOWN,
+                            _INTERFACE_ID_ERC998ERC721BOTTOMUP,
+                            _INTERFACE_ID_ERC721
+                        ]
                     );
-                bool _isERC998ERC721BottomDown =
-                    ERC165Checker.supportsInterface(
-                        tokenOwner,
-                        _INTERFACE_ID_ERC998ERC721BOTTOMUP
-                    );
-                bool _isERC721 =
-                    ERC165Checker.supportsInterface(
-                        tokenOwner,
-                        _INTERFACE_ID_ERC721
-                    );
-
+                // assign whether they support the interface
+                (_isERC998ERC721TopDown, _isERC998ERC721BottomUp, _isERC721) = (
+                    _supportedInterfaces[0],
+                    _supportedInterfaces[1],
+                    _supportedInterfaces[2]
+                );
                 if (_isERC998ERC721TopDown) {
-                    // Case 6: Token owner is a bottom-up composable
-                    IERC998ERC721BottomUp _contract =
-                        IERC998ERC721BottomUp(tokenOwner);
-                    return _contract.rootOwnerOf(parentTokenId);
-                } else if (_isERC998ERC721BottomDown) {
-                    // Case 2: Token owner is top-down composable
-                    IERC998ERC721TopDown _contract =
-                        IERC998ERC721TopDown(tokenOwner);
-                    return _contract.rootOwnerOf(parentTokenId);
+                    // yes it is a Top Down contract
+                    // this is the easiest we just call the rootOwnerOf
+                    // to see who the parent is of our token's parent
+                    _topDownContract = IERC998ERC721TopDown(tokenOwner);
+                    return _topDownContract.rootOwnerOf(parentTokenId);
+                } else if (_isERC998ERC721BottomUp) {
+                    // the contract is a bottom up contract
+                    // similar to above we call the root owner of
+                    // to see who the parent is of our token's parent
+                    _bottomUpContract = IERC998ERC721BottomUp(tokenOwner);
+                    return _bottomUpContract.rootOwnerOf(parentTokenId);
                 } else if (_isERC721) {
-                    IERC721 _contract = IERC721(tokenOwner);
-                    tokenOwner = _contract.ownerOf(parentTokenId);
+                    // this is interesting, our token's parent token is
+                    // in an ERC721 contract, and has no awareness of having
+                    // our token attached to it
+                    // we have to see who the owner of the parent token is
+                    // the parent token can be owned by an EOA or a topdown composable contract
+                    // first we have to query who owns the parent token in the ERC721 contract
+                    _ERC721Contract = IERC721(tokenOwner);
+                    // set the new tokenOwner to be the address that owns the parent token
+                    tokenOwner = _ERC721Contract.ownerOf(parentTokenId);
+                    // now we check who owns the parent token
                     if (Address.isContract(tokenOwner)) {
-                        bool _isERC998ERC721TopDown_ =
-                            ERC165Checker.supportsInterface(
-                                tokenOwner,
-                                _INTERFACE_ID_ERC998ERC721TOPDOWN
-                            );
-
-                        // Case 7: Token owner is ERC721 token owned by top-down token
-                        if (_isERC998ERC721TopDown_) {
-                            IERC998ERC721TopDown _contract_ =
-                                IERC998ERC721TopDown(tokenOwner);
+                        // its owned by a contract
+                        // is it a top down contract?
+                        _isERC998ERC721TopDown = ERC165Checker
+                            .supportsInterface(
+                            tokenOwner,
+                            _INTERFACE_ID_ERC998ERC721TOPDOWN
+                        );
+                        if (_isERC998ERC721TopDown) {
+                            // yes our parent token is owned by a
+                            // top down contract we can query who the
+                            // root owner is from there
+                            _topDownContract = IERC998ERC721TopDown(tokenOwner);
+                            // can't use tokenOwner because that is now the ERC998Top down
+                            // contract which we are calling
                             return
-                                _contract_.rootOwnerOfChild(
-                                    tokenOwner,
+                                _topDownContract.rootOwnerOfChild(
+                                    address(_ERC721Contract),
                                     parentTokenId
                                 );
                         } else {
-                            // Case 8: Token owner is ERC721 token owned by unknown contract
-                            return
-                                (ERC998_MAGIC_VALUE << 224) |
-                                bytes32(uint256(tokenOwner));
+                            // parent token is owned by an unknown contract
+                            return (ERC998_MAGIC_VALUE |
+                                addressToBytes32(tokenOwner));
                         }
                     } else {
-                        // Case 9: Token owner is ERC721 token owned by user
-                        return
-                            (ERC998_MAGIC_VALUE << 224) |
-                            bytes32(uint256(tokenOwner));
+                        // its owned by an EOA
+                        return (ERC998_MAGIC_VALUE |
+                            addressToBytes32(tokenOwner));
                     }
                 }
             }
+        } else {
+            // false owned by a contract
+            // check openzeppelin notice
+            // not 100% this is an EOA
+            // Case 5: Token owner is a user
+            return (ERC998_MAGIC_VALUE | addressToBytes32(tokenOwner));
         }
     }
 
