@@ -7,91 +7,12 @@ pragma solidity ^0.7.5;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-
-interface ERC998ERC721BottomUp {
-    event TransferToParent(
-        address indexed _toContract,
-        uint256 indexed _toTokenId,
-        uint256 _tokenId
-    );
-    event TransferFromParent(
-        address indexed _fromContract,
-        uint256 indexed _fromTokenId,
-        uint256 _tokenId
-    );
-
-    function rootOwnerOf(uint256 _tokenId)
-        external
-        view
-        returns (bytes memory rootOwner);
-
-    /**
-     * The tokenOwnerOf function gets the owner of the _tokenId which can be a user address or another ERC721 token.
-     * The tokenOwner address return value can be either a user address or an ERC721 contract address.
-     * If the tokenOwner address is a user address then parentTokenId will be 0 and should not be used or considered.
-     * If tokenOwner address is a user address then isParent is false, otherwise isChild is true, which means that
-     * tokenOwner is an ERC721 contract address and _tokenId is a child of tokenOwner and parentTokenId.
-     */
-    function tokenOwnerOf(uint256 _tokenId)
-        external
-        view
-        returns (
-            bytes32 tokenOwner,
-            uint256 parentTokenId,
-            bool isParent
-        );
-
-    // Transfers _tokenId as a child to _toContract and _toTokenId
-    function transferToParent(
-        address _from,
-        address _toContract,
-        uint256 _toTokenId,
-        uint256 _tokenId,
-        bytes calldata _data
-    ) external;
-
-    // Transfers _tokenId from a parent ERC721 token to a user address.
-    function transferFromParent(
-        address _fromContract,
-        uint256 _fromTokenId,
-        address _to,
-        uint256 _tokenId,
-        bytes calldata _data
-    ) external;
-
-    // Transfers _tokenId from a parent ERC721 token to a parent ERC721 token.
-    function transferAsChild(
-        address _fromContract,
-        uint256 _fromTokenId,
-        address _toContract,
-        uint256 _toTokenId,
-        uint256 _tokenId,
-        bytes calldata _data
-    ) external;
-}
-
-/*
-interface ERC998ERC721BottomUpNotifications {
-    function onERC998Removed(address _operator, uint256 _parentTokenId, uint256 _childTokenId, bytes _data) external;
-}
-*/
-interface ERC998ERC721BottomUpEnumerable {
-    function totalChildTokens(address _parentContract, uint256 _parentTokenId)
-        external
-        view
-        returns (uint256);
-
-    function childTokenByIndex(
-        address _parentContract,
-        uint256 _parentTokenId,
-        uint256 _index
-    ) external view returns (uint256);
-}
+import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
 
 contract ComposableBottomUp is
     ERC721,
-    ERC998ERC721BottomUp,
-    ERC998ERC721BottomUpEnumerable
+    IERC998ERC721BottomUp,
+    IERC998ERC721BottomUpEnumerable
 {
     using SafeMath for uint256;
 
@@ -102,7 +23,7 @@ contract ComposableBottomUp is
 
     // return this.rootOwnerOf.selector ^ this.rootOwnerOfChild.selector ^
     //   this.tokenOwnerOf.selector ^ this.ownerOfChild.selector;
-    bytes32 constant ERC998_MAGIC_VALUE = 0xcd740db5;
+    bytes32 constant ERC998_MAGIC_VALUE = bytes32(bytes4(0xcd740db5));
 
     // tokenId => token owner
     mapping(uint256 => TokenOwner) internal tokenIdToTokenOwner;
