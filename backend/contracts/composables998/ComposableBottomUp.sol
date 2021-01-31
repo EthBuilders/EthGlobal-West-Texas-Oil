@@ -390,6 +390,12 @@ contract ComposableBottomUp is
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
     }
 
+    /// @notice Transfer token from owner address to a token
+    /// @param _from The owner address
+    /// @param _toContract The ERC721 contract of the receiving token
+    /// @param _toTokenId The receiving token
+    /// @param _tokenId The token to transfer
+    /// @param _data Additional data with no specified format
     function transferToParent(
         address _from,
         address _toContract,
@@ -397,23 +403,32 @@ contract ComposableBottomUp is
         uint256 _tokenId,
         bytes calldata _data
     ) external {
-        require(_from != address(0));
-        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from);
-        require(_toContract != address(0));
-        require(
+        require(_from != address(0)); // token owner address can't be zero address (token must exist)
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _from); // the token owner must equal the given token owner address
+        require(_toContract != address(0)); // the contract of the receiving token can't be zero address
+        require( // the token can't be transferred if it's already owned by another token
             tokenIdToTokenOwner[_tokenId].parentTokenId == 0,
             "Cannot transfer from address when owned by a token."
         );
         address approvedAddress =
-            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
+            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId]; // get the address approved to move _tokenId
         if (msg.sender != _from) {
+            // if the msg.sender is not the owning address
             bytes32 rootOwner;
             bool callSuccess;
             // 0xed81cdda == rootOwnerOfChild(address,uint256)
+            // call the root Owner of Child function
+            // which is a Top Down Contract function
+            // which returns The root owner at the top of tree of tokens and ERC998 magic value
+            // this is necessary because the _tokenId could be owned by a parent token
+            // so we are checking to see who is the root owner
             bytes memory _calldata =
-                abi.encodeWithSelector(0xed81cdda, address(this), _tokenId);
+                abi.encodeWithSelector(0xed81cdda, address(this), _tokenId); // call data to send to Top Down Contract
+            // use assembly code to issue a static call to the _from address
+            // which may or may not be a contract
             assembly {
                 callSuccess := staticcall(
+                    // issue the call
                     gas(),
                     _from,
                     add(_calldata, 0x20),
@@ -422,45 +437,61 @@ contract ComposableBottomUp is
                     0x20
                 )
                 if callSuccess {
+                    // if the call was successful load the rootOwner
                     rootOwner := mload(_calldata)
                 }
             }
             if (callSuccess == true) {
+                // if the call was successful
+                // require the rootOwner at the top of the tree
+                // is not a top Down composable contract
+                // i assume because then that address would need to be called
+                // to transfer this child token via transferChild function
                 require(
                     rootOwner >> 224 != ERC998_MAGIC_VALUE,
                     "Token is child of other top down composable"
                 );
             }
-            require(
-                tokenOwnerToOperators[_from][msg.sender] ||
-                    approvedAddress == msg.sender
+            require( // regardless of whether the call is successful or not
+                //
+                tokenOwnerToOperators[_from][msg.sender] || // is the msg.sender an operator account for _from (they are allowed to call functions on behalf of owner)
+                    approvedAddress == msg.sender // is the msg.sender an approvedAddress (they are allowed to move that token)
             );
         }
 
-        // clear approval
+        // clear the approval
         if (approvedAddress != address(0)) {
+            // only run if there is an approved address
+            // this exists because there may be no approved address for the token
+            // but the _from address may have an approved operator account
+            // so before transferring ownership of the token we have to remove the
+            // approval
             delete rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
             emit Approval(_from, address(0), _tokenId);
         }
 
         // remove and transfer token
         if (_from != _toContract) {
-            assert(tokenOwnerToTokenCount[_from] > 0);
-            tokenOwnerToTokenCount[_from]--;
-            tokenOwnerToTokenCount[_toContract]++;
+            // if the ownerAddress doesn't equal the recipient
+            // sometimes you want to transfer a token to a new parenttoken at the same contract
+            // if that is the case don't run this
+            assert(tokenOwnerToTokenCount[_from] > 0); // verify the _from address has a token balance
+            tokenOwnerToTokenCount[_from]--; // reduce the balance of the _from address
+            tokenOwnerToTokenCount[_toContract]++; // increase the balance of _toContract
         }
         TokenOwner memory parentToken =
-            TokenOwner(_toContract, _toTokenId.add(1));
-        tokenIdToTokenOwner[_tokenId] = parentToken;
-        uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length;
-        parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
-        tokenIdToChildTokenIdsIndex[_tokenId] = index;
+            TokenOwner(_toContract, _toTokenId.add(1)); // create a new TokenOwner structure
+        tokenIdToTokenOwner[_tokenId] = parentToken; // rewrite the value in the tokenIdToTokenOwner mapping
+        uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length; // get the length of _toContract parentToken's owned tokens (only tokens from this contract)
+        parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId); // append the _tokenId to the parentToken's set of owned tokens
+        tokenIdToChildTokenIdsIndex[_tokenId] = index; // set the index of _token in ParenToken's set of tokens
 
         require(
-            ERC721(_toContract).ownerOf(_toTokenId) != address(0),
+            ERC721(_toContract).ownerOf(_toTokenId) != address(0), // require the toTokenId has an owner (exists)
             "_toTokenId does not exist"
         );
 
+        // emit events
         emit Transfer(_from, _toContract, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
