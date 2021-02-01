@@ -597,4 +597,16 @@ contract ERC998ERC721BottomUp is
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
+
+    /// @notice Get the number of ERC721 tokens owned by parent token.
+    /// @param _parentContract The contract the parent ERC721 token is from.
+    /// @param _parentTokenId The parent tokenId that owns tokens
+    /// @return uint256 The number of ERC721 tokens owned by parent token.
+    function totalChildTokens(address _parentContract, uint256 _parentTokenId)
+        external
+        view
+        returns (uint256)
+    {
+        return parentToChildTokenIds[_parentContract][_parentTokenId].length();
+    }
 }
