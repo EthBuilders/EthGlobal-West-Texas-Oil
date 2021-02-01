@@ -99,7 +99,27 @@ contract ERC998ERC721BottomUp is
     function rootOwnerOf(uint256 _tokenId)
         external
         view
-        override
+        returns (bytes32 rootOwner)
+    {
+        return _rootOwnerOf(_tokenId);
+    }
+
+    // Use Cases handled:
+    // Case 1: Token owner is this contract and no parent tokenId.
+    // Case 2: Token owner is this contract and token
+    // Case 3: Token owner is top-down composable
+    // Case 4: Token owner is an unknown contract
+    // Case 5: Token owner is a user
+    // Case 6: Token owner is a bottom-up composable
+    // Case 7: Token owner is ERC721 token owned by top-down token
+    // Case 8: Token owner is ERC721 token owned by unknown contract
+    // Case 9: Token owner is ERC721 token owned by user
+    /// @notice Get the root owner of tokenId.
+    /// @param _tokenId The token to query for a root owner address
+    /// @return rootOwner The root owner at the top of tree of tokens and ERC998 magic value.
+    function _rootOwnerOf(uint256 _tokenId)
+        internal
+        view
         returns (bytes32 rootOwner)
     {
         bool _isERC998ERC721TopDown;
