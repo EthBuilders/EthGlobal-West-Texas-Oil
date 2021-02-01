@@ -28,6 +28,7 @@ contract ERC998ERC721BottomUp is
     // return this.rootOwnerOf.selector ^ this.rootOwnerOfChild.selector ^
     //   this.tokenOwnerOf.selector ^ this.ownerOfChild.selector;
     bytes32 constant ERC998_MAGIC_VALUE = bytes32(bytes4(0xcd740db5)) << 224;
+    bytes32 constant ADDRESS_MASK = bytes32(type(uint256).max) >> 32;
 
     bytes4 private constant _INTERFACE_ID_ERC998ERC721TOPDOWN = 0x1efdf36a;
     bytes4 private constant _INTERFACE_ID_ERC998ERC721BOTTOMUP = 0xa1b23002;
@@ -491,8 +492,11 @@ contract ERC998ERC721BottomUp is
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
     }
 
-    function authenticateAndClearApproval(uint256 _tokenId) private {
-        address rootOwner = address(rootOwnerOf(_tokenId));
+    function _authenticateAndClearApproval(uint256 _tokenId) private {
+        // get the root owner of a token
+        address rootOwner =
+            address(uint256(_rootOwnerOf(_tokenId) & ADDRESS_MASK));
+        // get who is approved to move the token
         address approvedAddress =
             rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
         require(
@@ -503,7 +507,9 @@ contract ERC998ERC721BottomUp is
 
         // clear approval
         if (approvedAddress != address(0)) {
-            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+            rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] = address(
+                0
+            );
             emit Approval(rootOwner, address(0), _tokenId);
         }
     }
