@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableMap.sol";
 import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
 import "../interfaces/ERC998/IERC998ERC721TopDown.sol";
 
@@ -16,6 +18,7 @@ contract ERC998ERC721BottomUp is
     IERC998ERC721BottomUpEnumerable
 {
     using SafeMath for uint256;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     struct TokenOwner {
         address tokenOwner;
@@ -44,7 +47,7 @@ contract ERC998ERC721BottomUp is
     mapping(address => uint256) internal tokenOwnerToTokenCount;
 
     // parent address => (parent tokenId => array of child tokenIds)
-    mapping(address => mapping(uint256 => uint256[]))
+    mapping(address => mapping(uint256 => EnumerableSet.UintSet))
         private parentToChildTokenIds;
 
     // tokenId => position in childTokens array
@@ -321,60 +324,66 @@ contract ERC998ERC721BottomUp is
         uint256 _tokenId,
         bytes calldata _data
     ) external override {
+        // require the token exists
+        require(_exists(_tokenId));
+
+        // disallow transferring to the zero address
+        require(_toContract != address(0));
+
+        // this function assumes we are transferring to a contract
+        require(Address.isContract(_toContract));
+
+        // get the _tokenId's owner information
+        (address tokenOwner, uint256 parentTokenId, bool isParent) =
+            _tokenOwnerOf(_tokenId);
+
+        // if _tokenId is owned by another token
+        // disallow transferring because only the parent can
+        require(isParent == false);
+
+        // must be transfering from the owning parent contract/address, can't transfer a token a parent doesn't own
+        require(tokenOwner == _from);
+
+        // require the parent token exists
+        // since we are transferring to a NFT contract
+        require(IERC721(_toContract).ownerOf(_toTokenId) != address(0));
+
+        // get the address that is approved to move the token
+        address approvedAddress =
+            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
+
         bool _isERC998ERC721TopDown;
         bool _isERC998ERC721BottomUp;
         bool _isERC721;
         IERC998ERC721TopDown _topDownContract;
         IERC998ERC721BottomUp _bottomUpContract;
         IERC721 _ERC721Contract;
-        // get the _tokenId's owner information
-        (address tokenOwner, uint256 parentTokenId, bool isParent) =
-            _tokenOwnerOf(_tokenId);
-
-        // must be transfer from the owning parent contract/address, can't transfer a token a parent doesn't own
-        require(tokenOwner == _from);
-        // disallow transferring to the zero address
-        require(_toContract != address(0));
-        // if _tokenId is owned by another token
-        // disallow transferring
-        require(
-            isParent == false,
-            "Cannot transfer from address when owned by a token."
-        );
-        // get the address that is approved to move the token
-        address approvedAddress =
-            rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
 
         // if the caller isn't who we are transferring the token from
         if (msg.sender != _from) {
-            bytes32 rootOwner;
-            // check if the _from address is a contract
-            if (Address.isContract(_from)) {
-                // can be either self or another contract
-                // check if it is a top down composable
-                _isERC998ERC721TopDown = ERC165Checker.supportsInterface(
-                    _from,
-                    _INTERFACE_ID_ERC998ERC721TOPDOWN
-                );
-                // if it is a top down composable
-                if (_isERC998ERC721TopDown) {
-                    // query who the root owner is of this token
-                    _topDownContract = IERC998ERC721TopDown(_from);
-                    rootOwner = _topDownContract.rootOwnerOfChild(
-                        address(this),
-                        _tokenId
-                    );
-                }
-            }
             // require the msg.sender has permission to transfer the token
             // or is an operator for _from account
             require(
                 tokenOwnerToOperators[_from][msg.sender] ||
                     approvedAddress == msg.sender
             );
+
+            // can be either self or another contract
+            // check if it is a top down composable
+            _isERC998ERC721TopDown = ERC165Checker.supportsInterface(
+                _from,
+                _INTERFACE_ID_ERC998ERC721TOPDOWN
+            );
+
+            // if the owner address of the token is Top Down
+            // should call that contract's transferChild function
+            require(!_isERC998ERC721TopDown);
         }
 
         // clear approval
+        // this will alse clear the approval when _from == msg.sender
+        // which makes sense as the approval should be reset during a
+        // transfer before the new owner gets the token
         if (approvedAddress != address(0)) {
             rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId] = address(0);
             emit Approval(_from, address(0), _tokenId);
@@ -382,7 +391,10 @@ contract ERC998ERC721BottomUp is
 
         // remove and transfer token
         if (_from != _toContract) {
-            assert(tokenOwnerToTokenCount[_from] > 0);
+            // if the ownerAddress doesn't equal the recipient
+            // sometimes you want to transfer a token to a new parenttoken at the same contract
+            // if that is the case don't run this
+            assert(tokenOwnerToTokenCount[_from] > 0); // this should never happen
             tokenOwnerToTokenCount[_from] = tokenOwnerToTokenCount[_from].sub(
                 1
             );
@@ -391,19 +403,23 @@ contract ERC998ERC721BottomUp is
             ]
                 .add(1);
         }
+
+        // create a tokenOwner struct
         TokenOwner memory parentToken =
             TokenOwner(_toContract, _toTokenId.add(1));
+        // overwrite value currently held
         tokenIdToTokenOwner[_tokenId] = parentToken;
-        uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length;
-        parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
-        tokenIdToChildTokenIdsIndex[_tokenId] = index;
 
-        require(
-            ERC721(_toContract).ownerOf(_toTokenId) != address(0),
-            "_toTokenId does not exist"
-        );
+        // add _tokenId to parentToken's set of tokens
+        parentToChildTokenIds[_toContract][_toTokenId].add(_tokenId);
 
-        emit Transfer(_from, _toContract, _tokenId);
+        // set the token index in the parentToChildTokenIds mapping
+        tokenIdToChildTokenIdsIndex[_tokenId] = parentToChildTokenIds[
+            _toContract
+        ][_toTokenId]
+            .length();
+
+        _transfer(_from, _toContract, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
 }
