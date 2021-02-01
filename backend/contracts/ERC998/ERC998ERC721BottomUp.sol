@@ -435,10 +435,9 @@ contract ERC998ERC721BottomUp is
         parentToChildTokenIds[_toContract][_toTokenId].add(_tokenId);
 
         // set the token index in the parentToChildTokenIds mapping
-        tokenIdToChildTokenIdsIndex[_tokenId] = parentToChildTokenIds[
-            _toContract
-        ][_toTokenId]
-            .length();
+        tokenIdToChildTokenIdsIndex[_tokenId] =
+            parentToChildTokenIds[_toContract][_toTokenId].length() -
+            1;
 
         _transfer(_from, _toContract, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
@@ -537,20 +536,31 @@ contract ERC998ERC721BottomUp is
         uint256 _tokenId,
         bytes calldata _data
     ) external {
-        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
-        require(_toContract != address(0));
-        uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
-        require(parentTokenId > 0, "No parent token to transfer from.");
-        require(parentTokenId - 1 == _fromTokenId);
-        address rootOwner = address(rootOwnerOf(_tokenId));
+        // get the _tokenId's owner information
+        (address tokenOwner, uint256 parentTokenId, bool isParent) =
+            _tokenOwnerOf(_tokenId);
+
+        require(tokenOwner == _fromContract); // tokenOwner must equal fromContract
+        require(_toContract != address(0)); // can't burn the token
+        require(isParent); // No parent token to transfer from
+        require(parentTokenId == _fromTokenId);
+        require(IERC721(_toContract).ownerOf(_toTokenId) != address(0));
+
+        address rootOwner =
+            address(uint256(_rootOwnerOf(_tokenId) & ADDRESS_MASK)); // get the rootOwner of the token
+
+        // get the address approved to send the token
         address approvedAddress =
             rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+
+        // require the msg.sender be approved to manage the token
         require(
             rootOwner == msg.sender ||
                 tokenOwnerToOperators[rootOwner][msg.sender] ||
                 approvedAddress == msg.sender
         );
-        // clear approval
+
+        // clear approval ahead of transferrring the token
         if (approvedAddress != address(0)) {
             delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
             emit Approval(rootOwner, address(0), _tokenId);
@@ -559,26 +569,31 @@ contract ERC998ERC721BottomUp is
         // remove and transfer token
         if (_fromContract != _toContract) {
             assert(tokenOwnerToTokenCount[_fromContract] > 0);
-            tokenOwnerToTokenCount[_fromContract]--;
-            tokenOwnerToTokenCount[_toContract]++;
+            tokenOwnerToTokenCount[_fromContract] = tokenOwnerToTokenCount[
+                _fromContract
+            ]
+                .sub(1);
+            tokenOwnerToTokenCount[_toContract] = tokenOwnerToTokenCount[
+                _toContract
+            ]
+                .add(1);
         }
 
-        TokenOwner memory parentToken = TokenOwner(_toContract, _toTokenId);
-        tokenIdToTokenOwner[_tokenId] = parentToken;
+        TokenOwner memory tokenOwner = TokenOwner(_toContract, _toTokenId);
+        // set the new token owner
+        tokenIdToTokenOwner[_tokenId] = tokenOwner;
 
-        removeChild(_fromContract, _fromTokenId, _tokenId);
+        parentToChildTokenIds[_fromContract][_fromTokenId].remove(_tokenId);
+
+        delete tokenIdToChildTokenIdsIndex[_tokenId];
 
         //add to parentToChildTokenIds
-        uint256 index = parentToChildTokenIds[_toContract][_toTokenId].length;
-        parentToChildTokenIds[_toContract][_toTokenId].push(_tokenId);
-        tokenIdToChildTokenIdsIndex[_tokenId] = index;
+        parentToChildTokenIds[_toContract][_toTokenId].add(_tokenId);
+        tokenIdToChildTokenIdsIndex[_tokenId] =
+            parentToChildTokenIds[_toContract][_toTokenId].length() -
+            1;
 
-        require(
-            ERC721(_toContract).ownerOf(_toTokenId) != address(0),
-            "_toTokenId does not exist"
-        );
-
-        emit Transfer(_fromContract, _toContract, _tokenId);
+        _transfer(_fromContract, _toContract, _tokenId);
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
