@@ -1,0 +1,14 @@
+@import "../../assets/scss/colors.scss";
+
+.Header {
+  background-color: $base-color !important;
+
+  .HeaderGrid {
+    display: flex;
+    align-items: center;
+  }
+
+  .Username span {
+    color: $white-color !important;
+  }
+}
