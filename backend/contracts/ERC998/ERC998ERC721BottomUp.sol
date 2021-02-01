@@ -490,4 +490,21 @@ contract ERC998ERC721BottomUp is
         emit Transfer(_fromContract, _to, _tokenId);
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
     }
+
+    function authenticateAndClearApproval(uint256 _tokenId) private {
+        address rootOwner = address(rootOwnerOf(_tokenId));
+        address approvedAddress =
+            rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+        require(
+            rootOwner == msg.sender ||
+                tokenOwnerToOperators[rootOwner][msg.sender] ||
+                approvedAddress == msg.sender
+        );
+
+        // clear approval
+        if (approvedAddress != address(0)) {
+            delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+            emit Approval(rootOwner, address(0), _tokenId);
+        }
+    }
 }
