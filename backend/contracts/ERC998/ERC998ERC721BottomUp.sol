@@ -609,4 +609,21 @@ contract ERC998ERC721BottomUp is
     {
         return parentToChildTokenIds[_parentContract][_parentTokenId].length();
     }
+
+    /// @notice Get a child token by index
+    /// @param _parentContract The contract the parent ERC721 token is from.
+    /// @param _parentTokenId The parent tokenId that owns the token
+    /// @param _index The index position of the child token
+    /// @return uint256 The child tokenId owned by the parent token
+    function childTokenByIndex(
+        address _parentContract,
+        uint256 _parentTokenId,
+        uint256 _index
+    ) external view returns (uint256) {
+        require(
+            parentToChildTokenIds[_parentContract][_parentTokenId].length() >
+                _index
+        );
+        return parentToChildTokenIds[_parentContract][_parentTokenId][_index];
+    }
 }
