@@ -30,6 +30,8 @@ contract ERC998ERC721BottomUp is
     bytes32 constant ERC998_MAGIC_VALUE = bytes32(bytes4(0xcd740db5)) << 224;
     bytes32 constant ADDRESS_MASK = bytes32(type(uint256).max) >> 32;
 
+    bytes4 constant ERC721_RECEIVED = 0x150b7a02;
+
     bytes4 private constant _INTERFACE_ID_ERC998ERC721TOPDOWN = 0x1efdf36a;
     bytes4 private constant _INTERFACE_ID_ERC998ERC721BOTTOMUP = 0xa1b23002;
     bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
@@ -53,6 +55,11 @@ contract ERC998ERC721BottomUp is
 
     // tokenId => position in childTokens set
     mapping(uint256 => uint256) private tokenIdToChildTokenIdsIndex;
+
+    constructor(string memory name_, string memory symbol_)
+        public
+        ERC721(name_, symbol_)
+    {}
 
     function addressToBytes32(address _addr)
         internal
@@ -100,6 +107,7 @@ contract ERC998ERC721BottomUp is
     function rootOwnerOf(uint256 _tokenId)
         external
         view
+        override
         returns (bytes32 rootOwner)
     {
         return _rootOwnerOf(_tokenId);
@@ -207,15 +215,13 @@ contract ERC998ERC721BottomUp is
                 // meaning either it is a topdown/bottomup/ or regular ERC721
                 // we have to check who the parent token is owned by
                 // get the supported interfaces at once in a batch
+                bytes4[] memory _interfacesLookup = new bytes4[](3);
+                _interfacesLookup[0] = _INTERFACE_ID_ERC998ERC721TOPDOWN;
+                _interfacesLookup[1] = _INTERFACE_ID_ERC998ERC721BOTTOMUP;
+                _interfacesLookup[2] = _INTERFACE_ID_ERC721;
+
                 bool[] memory _supportedInterfaces =
-                    getSupportedInterfaces(
-                        tokenOwner,
-                        [
-                            _INTERFACE_ID_ERC998ERC721TOPDOWN,
-                            _INTERFACE_ID_ERC998ERC721BOTTOMUP,
-                            _INTERFACE_ID_ERC721
-                        ]
-                    );
+                    getSupportedInterfaces(tokenOwner, _interfacesLookup);
                 // assign whether they support the interface
                 (_isERC998ERC721TopDown, _isERC998ERC721BottomUp, _isERC721) = (
                     _supportedInterfaces[0],
@@ -374,11 +380,7 @@ contract ERC998ERC721BottomUp is
             rootOwnerAndTokenIdToApprovedAddress[_from][_tokenId];
 
         bool _isERC998ERC721TopDown;
-        bool _isERC998ERC721BottomUp;
-        bool _isERC721;
         IERC998ERC721TopDown _topDownContract;
-        IERC998ERC721BottomUp _bottomUpContract;
-        IERC721 _ERC721Contract;
 
         // if the caller isn't who we are transferring the token from
         if (msg.sender != _from) {
@@ -535,7 +537,7 @@ contract ERC998ERC721BottomUp is
         uint256 _toTokenId,
         uint256 _tokenId,
         bytes calldata _data
-    ) external {
+    ) external override {
         // get the _tokenId's owner information
         (address tokenOwner, uint256 parentTokenId, bool isParent) =
             _tokenOwnerOf(_tokenId);
@@ -550,18 +552,22 @@ contract ERC998ERC721BottomUp is
             address(uint256(_rootOwnerOf(_tokenId) & ADDRESS_MASK)); // get the rootOwner of the token
 
         // get the address approved to send the token
-        address approvedAddress =
-            rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
+        // address approvedAddress =
+        // rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
 
         // require the msg.sender be approved to manage the token
         require(
             rootOwner == msg.sender ||
                 tokenOwnerToOperators[rootOwner][msg.sender] ||
-                approvedAddress == msg.sender
+                rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] ==
+                msg.sender
         );
 
         // clear approval ahead of transferrring the token
-        if (approvedAddress != address(0)) {
+        if (
+            rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] !=
+            address(0)
+        ) {
             delete rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId];
             emit Approval(rootOwner, address(0), _tokenId);
         }
@@ -579,9 +585,9 @@ contract ERC998ERC721BottomUp is
                 .add(1);
         }
 
-        TokenOwner memory tokenOwner = TokenOwner(_toContract, _toTokenId);
+        TokenOwner memory _tokenOwner = TokenOwner(_toContract, _toTokenId);
         // set the new token owner
-        tokenIdToTokenOwner[_tokenId] = tokenOwner;
+        tokenIdToTokenOwner[_tokenId] = _tokenOwner;
 
         parentToChildTokenIds[_fromContract][_fromTokenId].remove(_tokenId);
 
@@ -605,6 +611,7 @@ contract ERC998ERC721BottomUp is
     function totalChildTokens(address _parentContract, uint256 _parentTokenId)
         external
         view
+        override
         returns (uint256)
     {
         return parentToChildTokenIds[_parentContract][_parentTokenId].length();
@@ -619,11 +626,12 @@ contract ERC998ERC721BottomUp is
         address _parentContract,
         uint256 _parentTokenId,
         uint256 _index
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         require(
             parentToChildTokenIds[_parentContract][_parentTokenId].length() >
                 _index
         );
-        return parentToChildTokenIds[_parentContract][_parentTokenId][_index];
+        return
+            parentToChildTokenIds[_parentContract][_parentTokenId].at(_index);
     }
 }
