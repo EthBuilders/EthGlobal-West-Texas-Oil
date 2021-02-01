@@ -51,7 +51,7 @@ contract ERC998ERC721BottomUp is
     mapping(address => mapping(uint256 => EnumerableSet.UintSet))
         private parentToChildTokenIds;
 
-    // tokenId => position in childTokens array
+    // tokenId => position in childTokens set
     mapping(uint256 => uint256) private tokenIdToChildTokenIdsIndex;
 
     function addressToBytes32(address _addr)
@@ -457,27 +457,35 @@ contract ERC998ERC721BottomUp is
         uint256 _tokenId,
         bytes calldata _data
     ) external override {
-        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
+        // get the _tokenId's owner information
+        (address tokenOwner, uint256 parentTokenId, bool isParent) =
+            _tokenOwnerOf(_tokenId);
+
+        require(tokenOwner == _fromContract);
         require(_to != address(0));
-        uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
-        require(parentTokenId != 0, "Token does not have a parent token.");
-        require(parentTokenId - 1 == _fromTokenId);
-        authenticateAndClearApproval(_tokenId);
+        require(isParent);
+        require(parentTokenId == _fromTokenId);
+        _authenticateAndClearApproval(_tokenId);
 
         // remove and transfer token
+        // if the _fromContract isn't the recipient
         if (_fromContract != _to) {
             assert(tokenOwnerToTokenCount[_fromContract] > 0);
-            tokenOwnerToTokenCount[_fromContract]--;
-            tokenOwnerToTokenCount[_to]++;
+            tokenOwnerToTokenCount[_fromContract] = tokenOwnerToTokenCount[
+                _fromContract
+            ]
+                .sub(1);
+            tokenOwnerToTokenCount[_to] = tokenOwnerToTokenCount[_to].add(1);
         }
 
         tokenIdToTokenOwner[_tokenId].tokenOwner = _to;
         tokenIdToTokenOwner[_tokenId].parentTokenId = 0;
 
-        removeChild(_fromContract, _fromTokenId, _tokenId);
+        parentToChildTokenIds[_fromContract][_fromTokenId].remove(_tokenId);
+
         delete tokenIdToChildTokenIdsIndex[_tokenId];
 
-        if (isContract(_to)) {
+        if (Address.isContract(_to)) {
             bytes4 retval =
                 IERC721Receiver(_to).onERC721Received(
                     msg.sender,
@@ -488,7 +496,7 @@ contract ERC998ERC721BottomUp is
             require(retval == ERC721_RECEIVED);
         }
 
-        emit Transfer(_fromContract, _to, _tokenId);
+        _transfer(_fromContract, _to, _tokenId);
         emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
     }
 
