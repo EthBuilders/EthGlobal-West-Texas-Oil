@@ -422,4 +422,52 @@ contract ERC998ERC721BottomUp is
         _transfer(_from, _toContract, _tokenId);
         emit TransferToParent(_toContract, _toTokenId, _tokenId);
     }
+
+    /// @notice Transfer token from a token to an address
+    /// @param _fromContract The address of the owning contract
+    /// @param _fromTokenId The owning token
+    /// @param _to The address the token is transferred to.
+    /// @param _tokenId The token that is transferred
+    /// @param _data Additional data with no specified format
+    function transferFromParent(
+        address _fromContract,
+        uint256 _fromTokenId,
+        address _to,
+        uint256 _tokenId,
+        bytes calldata _data
+    ) external override {
+        require(tokenIdToTokenOwner[_tokenId].tokenOwner == _fromContract);
+        require(_to != address(0));
+        uint256 parentTokenId = tokenIdToTokenOwner[_tokenId].parentTokenId;
+        require(parentTokenId != 0, "Token does not have a parent token.");
+        require(parentTokenId - 1 == _fromTokenId);
+        authenticateAndClearApproval(_tokenId);
+
+        // remove and transfer token
+        if (_fromContract != _to) {
+            assert(tokenOwnerToTokenCount[_fromContract] > 0);
+            tokenOwnerToTokenCount[_fromContract]--;
+            tokenOwnerToTokenCount[_to]++;
+        }
+
+        tokenIdToTokenOwner[_tokenId].tokenOwner = _to;
+        tokenIdToTokenOwner[_tokenId].parentTokenId = 0;
+
+        removeChild(_fromContract, _fromTokenId, _tokenId);
+        delete tokenIdToChildTokenIdsIndex[_tokenId];
+
+        if (isContract(_to)) {
+            bytes4 retval =
+                IERC721Receiver(_to).onERC721Received(
+                    msg.sender,
+                    _fromContract,
+                    _tokenId,
+                    _data
+                );
+            require(retval == ERC721_RECEIVED);
+        }
+
+        emit Transfer(_fromContract, _to, _tokenId);
+        emit TransferFromParent(_fromContract, _fromTokenId, _tokenId);
+    }
 }
