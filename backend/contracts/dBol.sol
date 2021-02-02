@@ -1,34 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.5;
 
-import "/Users/edsonramirez/ChainSkills/private/West-texas-prep/node_modules/@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
-// import "@openzeppelin/contracts/utils/Counters.sol";
-
-//Inherits from IERC20.sol, Need this to check balance on transferERC20.sol
-//Actually might not need this, I know great comments
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "./interfaces/ERC998/IERC998ERC20TopDown.sol";
+import "./ERC998/ERC998ERC721BottomUp.sol";
 
-// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+contract DBol is
+    ERC721PresetMinterPauserAutoId,
+    ERC998ERC721BottomUp,
+    IERC998ERC20TopDown
+{
+    using EnumerableSet for EnumerableSet.AddressSet;
 
-//IERC99820TopDown.sol inherits from IERC721.sol
-// import "./IERC998ERC20TopDown.sol";
+    /// @dev Keeps track of all the tokens which a tokenId owns
+    mapping(uint256 => EnumerableSet.AddressSet) erc20Contrracts;
 
-contract DBol is ERC721PresetMinterPauserAutoId {
-    constructor() public ERC721PresetMinterPauserAutoId("DBol", "DBL", "") {}
+    /// @dev index of a contract inside of erc20Contracts set
+    mapping(uint256 => mapping(address => uint256)) erc20ContractIndex;
 
-    //This function will be called from the original ticket contract.
-    //Uses openzeppelin
-    function createDBol(address driver) public {
-        mint(driver);
+    /// @dev tokenId balance for contract
+    mapping(uint256 => mapping(address => uint256)) erc20Balances;
+
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        string memory baseURI_
+    ) public ERC721PresetMinterPauserAutoId(name_, symbol_, baseURI_) {}
+
+    /// @dev Wrapper around the ERC721 mint function to create a new token
+    /// @dev this function will only work if the msg.sender has the minter role
+    /// @dev must call grantRole first to assign permission
+    function createDBol() public {
+        mint(msg.sender);
     }
-
-    event TransferERC20(
-        uint256 indexed _fromTokenId,
-        address indexed _to,
-        address indexed _erc20Contract,
-        uint256 _value
-    );
 
     ////////////////////// Iplementation of ERC998ERC20TopDown.sol below ///////////////////
 
