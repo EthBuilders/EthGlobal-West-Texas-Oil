@@ -38,25 +38,28 @@ contract DBol is
 
     ////////////////////// Iplementation of ERC998ERC20TopDown.sol below ///////////////////
 
-    mapping(uint256 => mapping(address => uint256)) balanceOfFungibleToken;
-
-    function _balanceOfERC20(uint256 tokenId, address erc20Contract)
+    /// @notice Look up the balance of ERC20 tokens for a specific token and ERC20 contract
+    /// @param _tokenId The token that owns the ERC20 tokens
+    /// @param _erc20Contract The ERC20 contract
+    /// @return The number of ERC20 tokens owned by a token from an ERC20 contract
+    function _balanceOfERC20(uint256 _tokenId, address _erc20Contract)
         internal
         view
         returns (uint256)
     {
-        //params@tokenId refer to the ERC-998 token that owns ERC-20 tokens
-        //params@erc20Contract refers to the token contract of the erc20Contract
-        //Function will return the number of ERC20 tokens owned by a specific token
-        return balanceOfFungibleToken[tokenId][erc20Contract];
+        return erc20Balances[_tokenId][_erc20Contract];
     }
 
-    function balanceOfERC20(uint256 tokenId, address erc20Contract)
+    /// @notice Look up the balance of ERC20 tokens for a specific token and ERC20 contract
+    /// @param _tokenId The token that owns the ERC20 tokens
+    /// @param _erc20Contract The ERC20 contract
+    /// @return The number of ERC20 tokens owned by a token from an ERC20 contract
+    function balanceOfERC20(uint256 _tokenId, address _erc20Contract)
         external
         view
         returns (uint256)
     {
-        return _balanceOfERC20(tokenId, erc20Contract);
+        return _balanceOfERC20(_tokenId, _erc20Contract);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
