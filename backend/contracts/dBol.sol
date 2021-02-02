@@ -101,37 +101,44 @@ contract DBol is
 
     /////////////////////////////////////////////////////////////////////////////////////////////
 
-    //params@tokenId refers to NFT who will be owner of FT
-    //params@to refers to owner of tokenId and will also by nature be the new owner of the FT
-    //params@erc20Contract refers to contract addrress of FT factory
-    //params@value refers to amount of FT tokens being transferred
+    /// @notice Transfer ERC20 tokens to address
+    /// @param _tokenId The token to transfer from
+    /// @param _to The address to send the ERC20 tokens to
+    /// @param _erc20Contract The ERC20 contract
+    /// @param _value The number of ERC20 tokens to transfer
     function transferERC20(
-        uint256 fromTokenId,
-        address to,
-        address erc20Contract,
-        uint256 value
-    ) external {
-        //Checks that the sender of these ERC20 tokens has enough to send
-        //This also makes sure balanceOf(msg.sender) doens't come back undefined
-        require(_balanceOfERC20(fromTokenId, erc20Contract) >= value);
-
-        //NFTOwner is the address of the one who owns tokenId, which is a reference to their uniquq DBol token id
-        //ownerOf() is a ERC721.sol function that returns address of ERC-721 token
-        address NFTOwner = ownerOf(fromTokenId);
-        //This require checks that the owner of the token transferrring the ERC20 is the caller of the function
-        require(NFTOwner == msg.sender);
-
-        //Need to find owner of params@to
-        // address NFTReciever = ownerOf(to);
-
-        //Msg.sender calls transfer() to send ERC20 tokens to owner of params@to
-        IERC20(erc20Contract).transfer(to, value);
-
-        //update amount of FT, for each individual NFT
-        balanceOfFungibleToken[fromTokenId][erc20Contract] -= value;
-        // balanceOfFungibleToken[to][erc20Contract] += value;
-
-        emit TransferERC20(fromTokenId, to, erc20Contract, value);
+        uint256 _tokenId,
+        address _to,
+        address _erc20Contract,
+        uint256 _value
+    ) external override {
+        require(_to != address(0)); // can't burn the tokens
+        address rootOwner =
+            address(uint256(_rootOwnerOf(_tokenId) & ADDRESS_MASK));
+        require(
+            rootOwner == msg.sender ||
+                tokenOwnerToOperators[rootOwner][msg.sender] ||
+                rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] ==
+                msg.sender
+        ); // must have the right permissions
+        require(erc20Balances[_tokenId][_erc20Contract] >= _value); // must have enough tokens
+        // decrease the balance the _tokenId has of _erc20Contract by _value
+        erc20Balances[_tokenId][_erc20Contract] = erc20Balances[_tokenId][
+            _erc20Contract
+        ]
+            .sub(_value);
+        // if the balance of _erc20Contract is now 0
+        if (erc20Balances[_tokenId][_erc20Contract] == 0) {
+            // remove the contract from set of contracts
+            erc20Contracts[_tokenId].remove(_erc20Contract);
+            // delete the value held in the index mapping
+            delete erc20ContractIndex[_tokenId][_erc20Contract];
+        }
+        require(
+            IERC20(_erc20Contract).transfer(_to, _value),
+            "ERC20 transfer failed"
+        );
+        emit TransferERC20(_tokenId, _to, _erc20Contract, _value);
     }
 
     //Needs to get approved before this function will work
