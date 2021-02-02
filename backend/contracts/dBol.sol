@@ -4,18 +4,21 @@ pragma solidity ^0.7.5;
 import "@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/ERC998/IERC998ERC20TopDown.sol";
 import "./ERC998/ERC998ERC721BottomUp.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 contract DBol is
     ERC721PresetMinterPauserAutoId,
     ERC998ERC721BottomUp,
     IERC998ERC20TopDown
 {
+    using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @dev Keeps track of all the tokens which a tokenId owns
-    mapping(uint256 => EnumerableSet.AddressSet) erc20Contrracts;
+    mapping(uint256 => EnumerableSet.AddressSet) erc20Contracts;
 
     /// @dev index of a contract inside of erc20Contracts set
     mapping(uint256 => mapping(address => uint256)) erc20ContractIndex;
@@ -38,6 +41,39 @@ contract DBol is
 
     ////////////////////// Iplementation of ERC998ERC20TopDown.sol below ///////////////////
 
+    /// @notice A token receives ERC20 tokens
+    /// @param _from The prior owner of the ERC20 tokens
+    /// @param _value The number of ERC20 tokens received
+    /// @param _data Up to the first 32 bytes contains an integer which is the receiving tokenId.
+    function tokenFallback(
+        address _from,
+        uint256 _value,
+        bytes calldata _data
+    ) external override {
+        require(Address.isContract(msg.sender));
+        require(_data.length > 0, "must contain uint256 tokenId");
+        uint256 tokenId;
+        // Already prety succinct so keeping the assembly code
+        assembly {
+            tokenId := calldataload(132)
+        }
+        if (_data.length < 32) {
+            tokenId = tokenId >> (256 - _data.length * 8);
+        }
+
+        // if the token doesn't already have this contract in it's set
+        if (!erc20Contracts[tokenId].contains(msg.sender)) {
+            erc20Contracts[tokenId].add(msg.sender);
+            erc20ContractIndex[tokenId][msg.sender] = erc20Contracts[tokenId]
+                .length();
+        }
+        // update the balance
+        erc20Balances[tokenId][msg.sender] = erc20Balances[tokenId][msg.sender]
+            .add(_value);
+
+        ReceivedERC20(_from, tokenId, msg.sender, _value);
+    }
+
     /// @notice Look up the balance of ERC20 tokens for a specific token and ERC20 contract
     /// @param _tokenId The token that owns the ERC20 tokens
     /// @param _erc20Contract The ERC20 contract
@@ -57,6 +93,7 @@ contract DBol is
     function balanceOfERC20(uint256 _tokenId, address _erc20Contract)
         external
         view
+        override
         returns (uint256)
     {
         return _balanceOfERC20(_tokenId, _erc20Contract);
