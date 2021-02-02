@@ -4,6 +4,8 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
 import "./interfaces/IERC1948.sol";
+import "dBol.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // @title Bill of Lading NFT Contract
 // @author Edward Amor
@@ -62,6 +64,8 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
     Bill[] public bills;
     mapping(uint256 => bytes32) data;
 
+    DBol dBOLContract;
+
     /*
      *     bytes4(keccak256('readData()')) == 0x70a08231
      *     bytes4(keccak256('ownerOf(uint256)')) == 0x6352211e
@@ -73,14 +77,23 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
     constructor(
         string memory name,
         string memory symbol,
-        string memory baseURI
+        string memory baseURI,
+        address dbolContract
     ) public ERC721PresetMinterPauserAutoId(name, symbol, baseURI) {
         _registerInterface(_INTERFACE_ID_ERC1948);
+        dBOLContract = DBol(dbolContract);
     }
 
     /// @notice Create a Bill of Lading for a shipment
     /// @dev User facing function which creates a bill
-    function createBillOfLading(MintArgs memory _args) public {
+    function createBillOfLading(
+        MintArgs memory _args,
+        address _funding,
+        uint256 _value
+    ) public {
+        require(
+            IERC20(_funding).allowance(msg.sender, address(this)) >= _value
+        );
         bills.push(
             Bill({
                 driver: _args.driver,
@@ -94,12 +107,11 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
             })
         );
         mint(msg.sender);
-        /**
-            TODO: A dbol should be minted at the same time, and funded with
-            assets, this requires the caller to before hand approve this
-            contract to take funds from an asset contract (stablecoin), and
-            then pass those funds along to the dbol.
-         */
+        IERC20(_funding).transferFrom(msg.sender, address(this), _value);
+        IERC20(_funding).approve(address(dBOLContract), _value);
+        uint256 childToken =
+            dBOLContract.createDBol(_funding, totalSupply() - 1);
+        dBOLContract.getERC20(address(this), childToken, _funding, _value);
     }
 
     /**

@@ -96,7 +96,7 @@ interface IERC998ERC721BottomUp is IERC721 {
 }
 
 /// @dev The ERC-165 identifier for this interface is 0x8318b539
-interface ERC998ERC721BottomUpEnumerable {
+interface IERC998ERC721BottomUpEnumerable {
     /// @notice Get the number of ERC721 tokens owned by parent token.
     /// @param _parentContract The contract the parent ERC721 token is from.
     /// @param _parentTokenId The parent tokenId that owns tokens
