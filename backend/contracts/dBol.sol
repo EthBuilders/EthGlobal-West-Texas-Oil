@@ -35,7 +35,7 @@ contract DBol is
     /// @dev Wrapper around the ERC721 mint function to create a new token
     /// @dev this function will only work if the msg.sender has the minter role
     /// @dev must call grantRole first to assign permission
-    function createDBol(address _fundAddress, uint256 _parentTokenId) public {
+    function createDBol(uint256 _parentTokenId) public returns (uint256) {
         require(Address.isContract(msg.sender));
         // mint a ERC721 token
         mint(msg.sender);
@@ -43,6 +43,7 @@ contract DBol is
             msg.sender,
             _parentTokenId
         );
+        return totalSupply() - 1;
     }
 
     ////////////////////// Iplementation of ERC998ERC20TopDown.sol below ///////////////////
