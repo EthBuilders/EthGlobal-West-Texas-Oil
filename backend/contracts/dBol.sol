@@ -183,27 +183,38 @@ contract DBol is
         emit TransferERC20(_tokenId, _to, _erc223Contract, _value);
     }
 
-    //Needs to get approved before this function will work
-    //params@from the current owner of the
+    /// @notice Get ERC20 tokens from ERC20 contract.
+    /// @dev Needs to be approved first by the _erc20Contract
+    /// @param _from The current owner address of the ERC20 tokens that are being transferred.
+    /// @param _tokenId The token to transfer the ERC20 tokens to.
+    /// @param _erc20Contract The ERC20 token contract
+    /// @param _value The number of ERC20 tokens to transfer
     function getERC20(
-        address from,
-        uint256 tokenId,
-        address erc20Contract,
-        uint256 value
-    ) external {
-        //require that msg.sender has permission to transfer ERC20 tokens
-        address NFTOwner = ownerOf(tokenId);
-        //erc20Contract.allowance(from, NFTOwner) returns how much NFTOwner is allowed to use
-        //This require also verifies that NFTOwner has been approved to spend the ERC20 tokens that belong to params@from
-        require(IERC20(erc20Contract).allowance(from, NFTOwner) >= value);
-
-        //Use transferFrom() from IERC20.sol
-        IERC20(erc20Contract).transferFrom(from, NFTOwner, value);
-
-        //update amount of FT, only for the tokenId(ERC998) token
-        balanceOfFungibleToken[tokenId][erc20Contract] += value;
-
-        emit Transfer(from, NFTOwner, value);
+        address _from,
+        uint256 _tokenId,
+        address _erc20Contract,
+        uint256 _value
+    ) external override {
+        require(
+            IERC20(_erc20Contract).allowance(_from, address(this)) >= _value
+        );
+        require(
+            IERC20(_erc20Contract).transferFrom(_from, address(this), _value)
+        );
+        // if the token doesn't already have this contract in it's set
+        if (!erc20Contracts[_tokenId].contains(_erc20Contract)) {
+            erc20Contracts[_tokenId].add(_erc20Contract);
+            erc20ContractIndex[_tokenId][_erc20Contract] = erc20Contracts[
+                _tokenId
+            ]
+                .length();
+        }
+        // update the balance
+        erc20Balances[_tokenId][_erc20Contract] = erc20Balances[_tokenId][
+            msg.sender
+        ]
+            .add(_value);
+        ReceivedERC20(_from, _tokenId, _erc20Contract, _value);
     }
     /////////////////////////////////////////////////////////////////////////////////////////////
 }
