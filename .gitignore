@@ -1,3 +1,6 @@
+# Project related
+.DS_Store
+
 # Logs
 logs
 *.log
