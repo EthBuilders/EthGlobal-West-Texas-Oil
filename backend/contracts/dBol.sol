@@ -141,6 +141,48 @@ contract DBol is
         emit TransferERC20(_tokenId, _to, _erc20Contract, _value);
     }
 
+    /// @notice Transfer ERC20 tokens to address or ERC20 top-down composable
+    /// @param _tokenId The token to transfer from
+    /// @param _to The address to send the ERC20 tokens to
+    /// @param _erc223Contract The ERC223 token contract
+    /// @param _value The number of ERC20 tokens to transfer
+    /// @param _data Additional data with no specified format, can be used to specify tokenId to transfer to
+    function transferERC223(
+        uint256 _tokenId,
+        address _to,
+        address _erc223Contract,
+        uint256 _value,
+        bytes calldata _data
+    ) external override {
+        require(_to != address(0)); // can't burn the tokens
+        address rootOwner =
+            address(uint256(_rootOwnerOf(_tokenId) & ADDRESS_MASK));
+        require(
+            rootOwner == msg.sender ||
+                tokenOwnerToOperators[rootOwner][msg.sender] ||
+                rootOwnerAndTokenIdToApprovedAddress[rootOwner][_tokenId] ==
+                msg.sender
+        ); // must have the right permissions
+        require(erc20Balances[_tokenId][_erc223Contract] >= _value); // must have enough tokens
+        // decrease the balance the _tokenId has of _erc20Contract by _value
+        erc20Balances[_tokenId][_erc223Contract] = erc20Balances[_tokenId][
+            _erc223Contract
+        ]
+            .sub(_value);
+        // if the balance of _erc20Contract is now 0
+        if (erc20Balances[_tokenId][_erc223Contract] == 0) {
+            // remove the contract from set of contracts
+            erc20Contracts[_tokenId].remove(_erc223Contract);
+            // delete the value held in the index mapping
+            delete erc20ContractIndex[_tokenId][_erc223Contract];
+        }
+        require(
+            IERC20(_erc223Contract).transfer(_to, _value),
+            "ERC20 transfer failed"
+        );
+        emit TransferERC20(_tokenId, _to, _erc223Contract, _value);
+    }
+
     //Needs to get approved before this function will work
     //params@from the current owner of the
     function getERC20(
