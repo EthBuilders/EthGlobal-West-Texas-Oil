@@ -18,28 +18,7 @@ import EditUser from './components/users/EditUser';
 import User from './components/users/User';
 
 function App(props) {
-
-  useEffect(() => {
-    loadWeb3();
-  }, []);
-
   
-  // loads the metamask extension
-  // TODO: make it only load when we click a button
-  const loadWeb3 = async () => {
-    if (window.ethereum) {
-      window.web3 = new Web3(window.ethereum)
-      await window.ethereum.enable()
-    }
-    else if (window.web3) {
-      window.web3 = new Web3(window.web3.currentProvider)
-    }
-    else {
-      window.alert('Non-Ethereum browser detected. You should consider trying MetaMask!')
-    }
-  }
-
-
   return (
     <Router>
       <div className='App'>

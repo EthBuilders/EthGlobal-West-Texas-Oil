@@ -1,4 +1,5 @@
 import React from 'react';
+import Metamask from './Metamask';
 import { Link, NavLink } from 'react-router-dom';
 const Navbar = () => {
   return (
@@ -30,6 +31,9 @@ const Navbar = () => {
               <NavLink className='nav-link' exact to='/about'>
                 About
               </NavLink>
+            </li>
+            <li className='nav-item'>
+              <Metamask />
             </li>
           </ul>
         </div>
