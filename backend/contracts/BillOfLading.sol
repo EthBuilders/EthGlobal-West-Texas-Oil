@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/presets/ERC721PresetMinterPauserAutoId.sol";
 import "./interfaces/IERC1948.sol";
-import "dBol.sol";
+import "./dBol.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // @title Bill of Lading NFT Contract
@@ -110,7 +110,7 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
         IERC20(_funding).transferFrom(msg.sender, address(this), _value);
         IERC20(_funding).approve(address(dBOLContract), _value);
         uint256 childToken =
-            dBOLContract.createDBol(_funding, totalSupply() - 1);
+            dBOLContract.createDBol(totalSupply() - 1);
         dBOLContract.getERC20(address(this), childToken, _funding, _value);
     }
 

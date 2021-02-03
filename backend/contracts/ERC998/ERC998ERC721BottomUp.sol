@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/utils/EnumerableMap.sol";
 import "../interfaces/ERC998/IERC998ERC721BottomUp.sol";
 import "../interfaces/ERC998/IERC998ERC721TopDown.sol";
 
-contract ERC998ERC721BottomUp is
+abstract contract ERC998ERC721BottomUp is
     ERC721,
     IERC998ERC721BottomUp,
     IERC998ERC721BottomUpEnumerable
@@ -56,10 +56,10 @@ contract ERC998ERC721BottomUp is
     // tokenId => position in childTokens set
     mapping(uint256 => uint256) private tokenIdToChildTokenIdsIndex;
 
-    constructor(string memory name_, string memory symbol_)
-        public
-        ERC721(name_, symbol_)
-    {}
+    // constructor(string memory name_, string memory symbol_)
+    //     public
+    //     ERC721(name_, symbol_)
+    // {}
 
     function addressToBytes32(address _addr)
         internal

@@ -229,7 +229,7 @@ contract DBol is
         address from,
         address to,
         uint256 tokenId
-    ) internal override(ERC721, ERC721Pausable) {
+    ) internal override(ERC721PresetMinterPauserAutoId, ERC721) {
         super._beforeTokenTransfer(from, to, tokenId);
         require(to != address(0)); // disallow burning
     }
