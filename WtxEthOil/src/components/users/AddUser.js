@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import axios from 'axios';
 import InputField from "../layout/Input";
+import Web3 from 'web3';
+import { fs } from 'fs';
 
 const AddUser = () => {
   let history = useHistory();
@@ -20,6 +22,19 @@ const AddUser = () => {
     quantity: '',
   });
 
+  const loadWeb3 = async () => {
+    if (window.ethereum) {
+      window.web3 = new Web3(window.ethereum)
+      await window.ethereum.enable()
+    }
+    else if (window.web3) {
+      window.web3 = new Web3(window.web3.currentProvider)
+    }
+    else {
+      window.alert('Non-Ethereum browser detected. You should consider trying MetaMask!')
+    }
+  }
+
   // const { driver, serialNumber, origin, destination, quantity } = user;
   const onInputChange = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
@@ -27,7 +42,28 @@ const AddUser = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    await axios.post('http://localhost:3003/users', user);
+
+    await loadWeb3();
+    let web3 = new Web3(window.web3.currentProvider);
+
+    let bolContract = new web3.eth.Contract(JSON.parse(fs.readFileSync('../../../../backend/build/contracts/BillOfLading.json', 'utf8')), bol.address);
+    await bolContract.methods.createBillOfLading(
+      [user.driver, user.serialNumber, [
+        parseInt(user.originDegrees),
+        parseInt(user.originMinutes),
+        parseInt(user.originSeconds),
+        parseInt(user.originCardinalDirection)
+      ], [
+        parseInt(user.destinationDegrees),
+        parseInt(user.destinationMinutes),
+        parseInt(user.destinationSeconds),
+        parseInt(user.destinationCardinalDirection)
+      ], parseInt(user.quantity)],
+      bol.tokenContract,
+      100
+    ).send();
+
+
     history.push('/');
   };
 
