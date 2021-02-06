@@ -8,12 +8,18 @@ const AddUser = () => {
   const [user, setUser] = useState({
     driver: '',
     serialNumber: '',
-    origin: '',
-    destination: '',
+    originDegrees: '',
+    originMinutes: '',
+    originSeconds: '',
+    originCardinalDirection: '',
+    destinationDegrees: '',
+    destinationMinutes: '',
+    destinationSeconds: '',
+    destinationCardinalDirection: '',
     quantity: '',
   });
 
-  const { driver, serialNumber, origin, destination, quantity } = user;
+  // const { driver, serialNumber, origin, destination, quantity } = user;
   const onInputChange = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
@@ -29,26 +35,17 @@ const AddUser = () => {
       <div className='w-75 mx-auto shadow p-5'>
         <h2 className='text-center mb-4'>Add A BOL</h2>
         <form onSubmit={(e) => onSubmit(e)}>
-          <div className='form-group'>
-            <InputField fieldName="driver" fieldValue={driver} setField={onInputChange} type="text" placeholder="Driver Ethereum Address" />
-          </div>
-          <div className='form-group'>
-            <InputField fieldName="serialNumber" fieldValue={serialNumber} setField={onInputChange} type="text" placeholder="Serial Number" />
-          </div>
-          <div className='form-group'>
-            <InputField fieldName="origin" fieldValue={origin} setField={onInputChange} type="text" placeholder="Origin Address" />
-          </div>
-          <div className='form-group'>
-            <InputField fieldName="destination" fieldValue={destination} setField={onInputChange} type="text" placeholder="Destination Address" />
-          </div>
-          <div className='form-group'>
-            <InputField fieldName="quantity" fieldValue={quantity} setField={onInputChange} type="text" placeholder="Quantity of Goods" />
-          </div>
+          {Object.keys(user).map((key, index) => (
+            <div className='form-group' key={index}>
+              <InputField fieldName={key} fieldValue={user[key]} setField={onInputChange} type="text" placeholder={key} />
+            </div>
+          ))}
           <button className='btn btn-primary btn-block'>Add BOL</button>
         </form>
       </div>
     </div>
   );
+
 };
 
 export default AddUser;
