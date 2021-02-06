@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import axios from 'axios';
+import InputField from "../layout/Input";
 
 const AddUser = () => {
   let history = useHistory();
@@ -29,54 +30,19 @@ const AddUser = () => {
         <h2 className='text-center mb-4'>Add A BOL</h2>
         <form onSubmit={(e) => onSubmit(e)}>
           <div className='form-group'>
-            <input
-              type='text'
-              className='form-control form-control-lg'
-              placeholder='Driver Ethereum Address'
-              name='driver'
-              value={driver}
-              onChange={(e) => onInputChange(e)}
-            />
+            <InputField fieldName="driver" fieldValue={driver} setField={onInputChange} type="text" placeholder="Driver Ethereum Address" />
           </div>
           <div className='form-group'>
-            <input
-              type='text'
-              className='form-control form-control-lg'
-              placeholder='Serial Number'
-              name='serialNumber'
-              value={serialNumber}
-              onChange={(e) => onInputChange(e)}
-            />
+            <InputField fieldName="serialNumber" fieldValue={serialNumber} setField={onInputChange} type="text" placeholder="Serial Number" />
           </div>
           <div className='form-group'>
-            <input
-              type='text'
-              className='form-control form-control-lg'
-              placeholder='Origin Address'
-              name='origin'
-              value={origin}
-              onChange={(e) => onInputChange(e)}
-            />
+            <InputField fieldName="origin" fieldValue={origin} setField={onInputChange} type="text" placeholder="Origin Address" />
           </div>
           <div className='form-group'>
-            <input
-              type='text'
-              className='form-control form-control-lg'
-              placeholder='Destination Address'
-              name='destination'
-              value={destination}
-              onChange={(e) => onInputChange(e)}
-            />
+            <InputField fieldName="destination" fieldValue={destination} setField={onInputChange} type="text" placeholder="Destination Address" />
           </div>
           <div className='form-group'>
-            <input
-              type='text'
-              className='form-control form-control-lg'
-              placeholder='Quantity of Goods'
-              name='quantity'
-              value={quantity}
-              onChange={(e) => onInputChange(e)}
-            />
+            <InputField fieldName="quantity" fieldValue={quantity} setField={onInputChange} type="text" placeholder="Quantity of Goods" />
           </div>
           <button className='btn btn-primary btn-block'>Add BOL</button>
         </form>
