@@ -5,7 +5,7 @@ import InputField from "../layout/Input";
 
 const AddUser = () => {
   let history = useHistory();
-  let [bol, setBol] = useState("0x0000000000000000000000000000000000000000");
+  let [bol, setBol] = useState({ address: "0x0000000000000000000000000000000000000000" });
   const [user, setUser] = useState({
     driver: '',
     serialNumber: '',
@@ -36,7 +36,7 @@ const AddUser = () => {
       <div className='container'>
         <div className='w-75 mx-auto shadow p-5'>
           <h2 className='text-center mb-4'>BOL Contract Address</h2>
-          <InputField fieldName="" fieldValue={bol} setField={setBol} type="text" placeholder="Enter an address" />
+          <InputField fieldName="address" fieldValue={bol.address} setField={(e) => setBol({ [e.target.name]: e.target.value })} type="text" placeholder={"Enter an address"} />
         </div>
       </div>
       <div className='container'>
