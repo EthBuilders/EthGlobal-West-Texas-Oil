@@ -7,27 +7,27 @@ const bolAbi = require("../../bol.json");
 
 const AddUser = () => {
   let history = useHistory();
-  let [bol, setBol] = useState({ address: "0x0000000000000000000000000000000000000000", tokenContract: "0x0000000000000000000000000000000000000000" });
+  let [bol, setBol] = useState({ address: "0x07E71765a2f34021AB8eCA03A8e8d8E13F9198c6", tokenContract: "0xdbAEe074eC8Af2cD1daAe455AB1d9e6a63C6F872" });
   const [user, setUser] = useState({
-    driver: '',
-    serialNumber: '',
-    latitudeOriginDegrees: '',
-    latitudeOriginMinutes: '',
-    latitudeOriginSeconds: '',
-    latitudeOriginCardinalDirection: '',
-    longitudeOriginDegrees: '',
-    longitudeOriginMinutes: '',
-    longitudeOriginSeconds: '',
-    longitudeOriginCardinalDirection: '',
-    latitudeDestinationDegrees: '',
-    latitudeDestinationMinutes: '',
-    latitudeDestinationSeconds: '',
-    latitudeDestinationCardinalDirection: '',
-    longitudeDestinationDegrees: '',
-    longitudeDestinationMinutes: '',
-    longitudeDestinationSeconds: '',
-    longitudeDestinationCardinalDirection: '',
-    quantity: '',
+    driver: '0x96767a69aa77A8E98d926ea7900BbDBbCa2b916E',
+    serialNumber: 'GA123AA',
+    latitudeOriginDegrees: '0',
+    latitudeOriginMinutes: '0',
+    latitudeOriginSeconds: '0',
+    latitudeOriginCardinalDirection: '0',
+    longitudeOriginDegrees: '0',
+    longitudeOriginMinutes: '0',
+    longitudeOriginSeconds: '0',
+    longitudeOriginCardinalDirection: '0',
+    latitudeDestinationDegrees: '0',
+    latitudeDestinationMinutes: '0',
+    latitudeDestinationSeconds: '0',
+    latitudeDestinationCardinalDirection: '0',
+    longitudeDestinationDegrees: '0',
+    longitudeDestinationMinutes: '0',
+    longitudeDestinationSeconds: '0',
+    longitudeDestinationCardinalDirection: '0',
+    quantity: '1000',
   });
   let account;
 
