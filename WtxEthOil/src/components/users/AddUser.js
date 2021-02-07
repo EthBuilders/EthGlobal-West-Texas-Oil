@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
-import axios from 'axios';
 import InputField from "../layout/Input";
 import Web3 from 'web3';
-import { fs } from 'fs';
+const tokenAbi = require('../../token.json');
+const bolAbi = require("../../bol.json");
 
 const AddUser = () => {
   let history = useHistory();
@@ -11,16 +11,77 @@ const AddUser = () => {
   const [user, setUser] = useState({
     driver: '',
     serialNumber: '',
-    originDegrees: '',
-    originMinutes: '',
-    originSeconds: '',
-    originCardinalDirection: '',
-    destinationDegrees: '',
-    destinationMinutes: '',
-    destinationSeconds: '',
-    destinationCardinalDirection: '',
+    latitudeOriginDegrees: '',
+    latitudeOriginMinutes: '',
+    latitudeOriginSeconds: '',
+    latitudeOriginCardinalDirection: '',
+    longitudeOriginDegrees: '',
+    longitudeOriginMinutes: '',
+    longitudeOriginSeconds: '',
+    longitudeOriginCardinalDirection: '',
+    latitudeDestinationDegrees: '',
+    latitudeDestinationMinutes: '',
+    latitudeDestinationSeconds: '',
+    latitudeDestinationCardinalDirection: '',
+    longitudeDestinationDegrees: '',
+    longitudeDestinationMinutes: '',
+    longitudeDestinationSeconds: '',
+    longitudeDestinationCardinalDirection: '',
     quantity: '',
   });
+  let account;
+
+  useEffect(() => {
+    loadWeb3();
+  })
+
+  function cleanData(data) {
+    let result = {}
+    let pat = /^(latitude|longitude).*/;
+    for (const [key, value] of Object.entries(data)) {
+      if (pat.test(key)) {
+        result[key] = parseInt(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return [
+      result.driver,
+      result.serialNumber,
+      [
+        [
+          result.latitudeOriginDegrees,
+          result.latitudeOriginMinutes,
+          result.latitudeOriginSeconds,
+          result.latitudeOriginCardinalDirection,
+        ],
+        [
+          result.longitudeOriginDegrees,
+          result.longitudeOriginMinutes,
+          result.longitudeOriginSeconds,
+          result.longitudeOriginCardinalDirection,
+
+        ]
+      ],
+      [
+        [
+          result.latitudeDestinationDegrees,
+          result.latitudeDestinationMinutes,
+          result.latitudeDestinationSeconds,
+          result.latitudeDestinationCardinalDirection,
+        ],
+        [
+          result.longitudeDestinationDegrees,
+          result.longitudeDestinationMinutes,
+          result.longitudeDestinationSeconds,
+          result.longitudeDestinationCardinalDirection,
+
+        ]
+      ],
+      result.quantity
+    ];
+  }
+
 
   const loadWeb3 = async () => {
     if (window.ethereum) {
@@ -42,29 +103,25 @@ const AddUser = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    let data = cleanData(user);
 
-    await loadWeb3();
+    window.web3.currentProvider.enable();
     let web3 = new Web3(window.web3.currentProvider);
 
-    let bolContract = new web3.eth.Contract(JSON.parse(fs.readFileSync('../../../../backend/build/contracts/BillOfLading.json', 'utf8')), bol.address);
-    await bolContract.methods.createBillOfLading(
-      [user.driver, user.serialNumber, [
-        parseInt(user.originDegrees),
-        parseInt(user.originMinutes),
-        parseInt(user.originSeconds),
-        parseInt(user.originCardinalDirection)
-      ], [
-        parseInt(user.destinationDegrees),
-        parseInt(user.destinationMinutes),
-        parseInt(user.destinationSeconds),
-        parseInt(user.destinationCardinalDirection)
-      ], parseInt(user.quantity)],
-      bol.tokenContract,
-      100
-    ).send();
+    web3.eth.getAccounts().then((e) => {
+      account = e[0];
+      console.log(`The account is ${account}`);
+      let bolContract = new web3.eth.Contract(bolAbi.abi, bol.address, { from: account });
+
+      console.log(bolContract.defaultAccount);
+
+      bolContract.methods.createBillOfLading(data, bol.tokenContract, 100).send();
+
+    })
 
 
-    history.push('/');
+
+    // history.push('/');
   };
 
   return (
