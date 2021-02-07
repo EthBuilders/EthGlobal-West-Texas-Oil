@@ -50,6 +50,8 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
         uint256 quantity;
     }
 
+    event CreateBill(MintArgs arguments, address indexed to);
+
     struct Bill {
         address driver;
         string serialNumber;
@@ -109,9 +111,9 @@ contract BillOfLading is ERC721PresetMinterPauserAutoId, IERC1948 {
         mint(msg.sender);
         IERC20(_funding).transferFrom(msg.sender, address(this), _value);
         IERC20(_funding).approve(address(dBOLContract), _value);
-        uint256 childToken =
-            dBOLContract.createDBol(totalSupply() - 1);
+        uint256 childToken = dBOLContract.createDBol(totalSupply() - 1);
         dBOLContract.getERC20(address(this), childToken, _funding, _value);
+        emit CreateBill(_args, _args.driver);
     }
 
     /**

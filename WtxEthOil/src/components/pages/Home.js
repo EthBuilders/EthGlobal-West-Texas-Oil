@@ -1,17 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import InputField from "../layout/Input";
+import Web3 from 'web3';
+const bolAbi = require("../../bol.json");
+
+
 
 const Home = () => {
+  let [bol, setBol] = useState({ address: "0x0000000000000000000000000000000000000000", tokenContract: "0x0000000000000000000000000000000000000000" });
   const [users, setUser] = useState([]);
+
+  let account;
 
   useEffect(() => {
     loadUsers();
+    loadWeb3();
   }, []);
 
+  const loadWeb3 = async () => {
+    if (window.ethereum) {
+      window.web3 = new Web3(window.ethereum)
+      await window.ethereum.enable()
+    }
+    else if (window.web3) {
+      window.web3 = new Web3(window.web3.currentProvider)
+    }
+    else {
+      window.alert('Non-Ethereum browser detected. You should consider trying MetaMask!')
+    }
+  }
+
   const loadUsers = async () => {
-    const result = await axios.get('http://localhost:3003/users');
-    setUser(result.data.reverse());
+
+    window.web3.currentProvider.enable();
+    let web3 = new Web3(window.web3.currentProvider);
+
+    web3.eth.getAccounts().then((e) => {
+
+      let bolContract = new web3.eth.Contract(bolAbi.abi, bol.address, { from: account });
+
+      bolContract.getPastEvents("allevents", { fromBlock: 1, toBlock: "latest" }).then((events) => {
+        console.log(events);
+        setUser(events);
+      })
+
+      // setUser(result.data.reverse());
+    })
+
   };
 
   const deleteUser = async (id) => {
@@ -21,9 +57,27 @@ const Home = () => {
 
   return (
     <div className='container'>
+      <div className='container'>
+        <div className='w-75 mx-auto shadow p-5'>
+          <h2 className='text-center mb-4'>BOL Contract Address</h2>
+          <div className='form-group'>
+            <InputField fieldName="address" fieldValue={bol.address} setField={(e) => setBol({ ...bol, [e.target.name]: e.target.value })} type="text" placeholder={"Enter an address"} />
+          </div>
+          <h2 className='text-center mb-4'>Token Contract Address</h2>
+          <div className='form-group'>
+            <InputField fieldName="tokenContract" fieldValue={bol.tokenContract} setField={(e) => setBol({ ...bol, [e.target.name]: e.target.value })} type="text" placeholder={"Token Contract Address"} />
+          </div>
+        </div>
+      </div>
       <div className='py-4'>
         <h1>Home Page</h1>
-        <table class='table border shadow'>
+        {users.map((user, index) => (
+          <div>
+            <p>{index}</p>
+            <p>{user}</p>
+          </div>
+        ))}
+        {/* <table class='table border shadow'>
           <thead class='thead-dark'>
             <tr>
               <th scope='col'>#</th>
@@ -58,11 +112,11 @@ const Home = () => {
                   </Link>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            ))} */}
+        {/* </tbody>
+        </table> */}
+      </div >
+    </div >
   );
 };
 
